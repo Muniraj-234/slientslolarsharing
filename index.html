@@ -6,7 +6,7 @@
 <style>body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>Silent Assistant 3D Charging Hub</title>
+<title>Silent Assassins 3D Charging Hub</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
 <style>
 /* Layout: a control-room console. A live status rail on top, tabbed work areas below; the plant is drawn in
@@ -194,7 +194,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
   <header class="top">
     <div class="brand">
       <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent)"/><circle cx="22" cy="16" r="6" fill="var(--s-pv)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent-ink)" stroke-width="2.5" fill="none"/></svg>
-      <div><h1>Silent Assistant</h1><p>Intelligent load-sharing controller for solar charging stations · <a href="app.html" target="_blank" rel="noopener">Open the customer app</a></p></div>
+      <div><h1>Silent Assassins</h1><p>Intelligent load-sharing controller for solar charging stations · <a href="app.html" target="_blank" rel="noopener">Open the customer app</a></p></div>
     </div>
     <div class="rail" aria-live="off">
       <div class="chip"><span>Station time</span><b id="r-time">--:--</b></div>
@@ -233,7 +233,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
       <div class="panel prose">
         <span class="eyebrow">The solution</span>
         <h2>One controller that treats power as a budget and shares it every second</h2>
-        <p>Silent Assistant sits between the DC bus and the charging ports. It measures what the sun and battery can give, asks each port what its vehicle can take, and sets every port's charging power so the total never exceeds the supply.</p>
+        <p>Silent Assassins sits between the DC bus and the charging ports. It measures what the sun and battery can give, asks each port what its vehicle can take, and sets every port's charging power so the total never exceeds the supply.</p>
       </div>
       <div class="asks">
         <div><h3>Allocates fairly</h3><p>Max-min sharing with a guaranteed minimum. Small loads get what they need, large loads split the rest equally, priority users (ambulance e-rickshaw, health worker) count double. If power cannot cover every minimum, the least-charged vehicles go first and the order rotates every 10 minutes.</p></div>
@@ -244,9 +244,9 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
       </div>
 
       <div class="panel">
-        <h3>Same sun, same customers: unmanaged station against Silent Assistant</h3>
+        <h3>Same sun, same customers: unmanaged station against Silent Assassins</h3>
         <p class="note" style="margin-bottom:10px">Average of 20 simulated days with identical arrivals and weather in both columns, run in your browser by the same model that drives the live tab. Station: 10 kWp PV, 20 kWh battery, 10 kW converter, 3 kW grid backup, 10 ports.</p>
-        <div class="scroll-x"><table id="cmp"><thead><tr><th>Per day</th><th class="num">Unmanaged</th><th class="num">Silent Assistant</th><th>What it means</th></tr></thead><tbody></tbody></table></div>
+        <div class="scroll-x"><table id="cmp"><thead><tr><th>Per day</th><th class="num">Unmanaged</th><th class="num">Silent Assassins</th><th>What it means</th></tr></thead><tbody></tbody></table></div>
         <p id="cmp-say" style="margin-top:12px"></p>
         <p class="note" style="margin-top:6px">The controller does not create energy: both stations sell about the same number of units because the sun and the backup feed set the total. What changes is that the station stops tripping, the wait becomes short and predictable, and the energy is shared.</p>
       </div>
@@ -271,7 +271,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
         <div class="ctl-in">
           <div>
             <span class="lab">Controller</span>
-            <div class="seg" id="mode"><button data-v="1" aria-pressed="true">Silent Assistant on</button><button data-v="0" aria-pressed="false">Unmanaged</button></div>
+            <div class="seg" id="mode"><button data-v="1" aria-pressed="true">Silent Assassins on</button><button data-v="0" aria-pressed="false">Unmanaged</button></div>
             <span class="note">Switch to Unmanaged to watch the same station trip.</span>
             <span class="lab">Backup feed (grid, 3 kW)</span>
             <div class="seg" id="bk"><button data-v="1" aria-pressed="true">Automatic</button><button data-v="0" aria-pressed="false">Switched off</button></div>
@@ -546,7 +546,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
 
       <div class="panel">
         <h3>Government of India schemes that fit</h3>
-        <div class="scroll-x"><table><thead><tr><th>Scheme</th><th>What it offers</th><th>How Silent Assistant uses it</th></tr></thead><tbody>
+        <div class="scroll-x"><table><thead><tr><th>Scheme</th><th>What it offers</th><th>How Silent Assassins uses it</th></tr></thead><tbody>
           <tr><td><b>PM E-DRIVE</b><br><span class="note">Ministry of Heavy Industries</span></td><td>₹2,000 crore for public EV charging, with about 72,300 chargers planned including about 48,400 for two- and three-wheelers. Up to 80% subsidy on upstream infrastructure, more at government premises. Battery charging and swapping stations qualify. Runs to 31 March 2028. Proposals go through state nodal agencies; BHEL is the implementing agency.</td><td>Offer the controller as the load-management layer for two- and three-wheeler sites proposed by state agencies, oil-company outlets and charge-point operators. The subsidy goes to the site owner, which lowers the cost of the station our kit goes into.</td></tr>
           <tr><td><b>EV charging infrastructure guidelines, 2024</b><br><span class="note">Ministry of Power</span></td><td>Solar hours (9 am to 4 pm) get a cheaper supply tariff of 0.7 times the average cost of supply. Service-charge ceilings for AC charging of ₹3 per kWh in solar hours and ₹4 otherwise. The guidelines are advisory and states adopt them individually.</td><td>The controller already favours charging in solar hours, which is the behaviour the policy rewards. Price within the ceiling at sites where a state applies it.</td></tr>
           <tr><td><b>PM Surya Ghar: Muft Bijli Yojana</b><br><span class="note">Ministry of New and Renewable Energy</span></td><td>Rooftop solar subsidy for homes: ₹30,000 per kW up to 2 kW and a ceiling of ₹78,000 at 3 kW, with a target of one crore households. The scheme also covers common facilities of housing societies, including EV charging; check the portal for the current rate.</td><td>Housing societies that add shared EV charging to subsidised rooftop solar need exactly this controller to stop evening overloads.</td></tr>
@@ -583,7 +583,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
 
 <script src="model.js?v=1"></script>
 <script src="station-link.js?v=1"></script>
-<script src="suryashare3d.js?v=5"></script>
+<script src="suryashare3d.js?v=6"></script>
 <script>
 (function () {
   'use strict';
@@ -906,8 +906,8 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
     ];
     $('cmp').tBodies[0].innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1].toFixed(r[3])}</td><td class="num">${r[2].toFixed(r[3])}</td><td class="note">${r[4]}</td></tr>`).join('');
     $('cmp-say').innerHTML = s.trips < 0.05 && b.trips >= 1
-      ? `The unmanaged station tripped about <b>${Math.round(b.trips)} times a day</b> and was down for <b>${Math.round(b.downMin)} minutes</b>. With Silent Assistant it <span class="better">did not trip</span>, and the average wait for a port fell from ${b.avgWait.toFixed(1)} to ${s.avgWait.toFixed(1)} minutes.`
-      : `Trips per day: ${b.trips.toFixed(1)} unmanaged, ${s.trips.toFixed(1)} with Silent Assistant.`;
+      ? `The unmanaged station tripped about <b>${Math.round(b.trips)} times a day</b> and was down for <b>${Math.round(b.downMin)} minutes</b>. With Silent Assassins it <span class="better">did not trip</span>, and the average wait for a port fell from ${b.avgWait.toFixed(1)} to ${s.avgWait.toFixed(1)} minutes.`
+      : `Trips per day: ${b.trips.toFixed(1)} unmanaged, ${s.trips.toFixed(1)} with Silent Assassins.`;
     $('b-kwh').value = (Math.round(s.kwh * 2) / 2).toFixed(1);
     $('b-gkwh').value = (Math.round(s.gridKwh * 2) / 2).toFixed(1);
   }

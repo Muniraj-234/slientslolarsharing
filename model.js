@@ -1,4 +1,4 @@
-/* Silent Assistant station model + load-sharing controller. No DOM access: runs in the page and in Node. */
+/* Silent Assassins station model + load-sharing controller. No DOM access: runs in the page and in Node. */
 (function (root) {
   'use strict';
 

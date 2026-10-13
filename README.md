@@ -1,4 +1,4 @@
-# Silent Assistant: intelligent load-sharing controller for solar charging stations
+# Silent Assassins: intelligent load-sharing controller for solar charging stations
 
 A solar-powered charging station overloads when several users plug in together. This project is a
 controller that treats the available power as a budget and shares it every second: fair allocation,

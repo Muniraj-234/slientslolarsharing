@@ -1,4 +1,4 @@
-/* Silent Assistant 3D views: the live station and the bench prototype, built from primitives with three.js.
+/* Silent Assassins 3D views: the live station and the bench prototype, built from primitives with three.js.
    Both read the same Station object the rest of the page uses, so nothing here has its own state to drift. */
 (function () {
   'use strict';
@@ -393,10 +393,10 @@
       gridLabel.set('Grid backup ' + S.c.gridKw + ' kW', !S.backup ? 'switched off' : S.faults.grid ? 'grid outage' : N.gridAvail > 0 ? 'supplying ' + N.grid.toFixed(2) + ' kW' : 'standby', gcol);
       gridLamp.material.emissive.copy(C(gcol));
       mpptLabel.set('MPPT + 48 V bus', Math.round(S.temp) + ' °C · limit ' + N.busLim.toFixed(1) + ' kW', S.hot ? COL.crit : COL.idle);
-      ctlLabel.set('Silent Assistant', mode, !S.smart ? (N.tripped ? COL.crit : COL.warn) : N.limiter === 'none' ? COL.good : COL.load);
+      ctlLabel.set('Silent Assassins', mode, !S.smart ? (N.tripped ? COL.crit : COL.warn) : N.limiter === 'none' ? COL.good : COL.load);
       const q = S.queue[0];
-      kiosk.set(!S.smart && N.tripped ? ['SILENT ASSISTANT', '** TRIPPED **', 'all ports off', 'back in ' + Math.ceil(N.tripLeft) + ' min'] :
-        ['SILENT ASSISTANT', 'AVAIL  ' + N.budget.toFixed(2) + ' kW', 'IN USE ' + N.load.toFixed(2) + ' kW', 'WAITING ' + S.queue.length, N.gridAvail > 0 ? 'BACKUP ' + N.grid.toFixed(2) + ' kW' : 'BACKUP standby', q ? 'NEXT ' + (S.smart ? '~' + dur(q.wait) : 'unknown') : 'PLUG IN NOW']);
+      kiosk.set(!S.smart && N.tripped ? ['SILENT ASSASSINS', '** TRIPPED **', 'all ports off', 'back in ' + Math.ceil(N.tripLeft) + ' min'] :
+        ['SILENT ASSASSINS', 'AVAIL  ' + N.budget.toFixed(2) + ' kW', 'IN USE ' + N.load.toFixed(2) + ' kW', 'WAITING ' + S.queue.length, N.gridAvail > 0 ? 'BACKUP ' + N.grid.toFixed(2) + ' kW' : 'BACKUP standby', q ? 'NEXT ' + (S.smart ? '~' + dur(q.wait) : 'unknown') : 'PLUG IN NOW']);
     }
 
     function tick(dt, now, snap) {
