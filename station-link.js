@@ -8,21 +8,24 @@
 
   function snapshot(st, src) {
     const N = st.now, c = st.c;
-    const usable = st.ports.filter(p => !p.fault);
-    const left = usable.map(p => p.s ? st.portLeft(p) : 0).sort((a, b) => a - b);
-    const pos = st.queue.length, n = usable.length;
-    // Wait for someone arriving now: behind everyone already queued, on the port that frees up next.
-    let waitNew = -1;                                       // -1 means "cannot be estimated"
-    if (n && st.smart) waitNew = left[Math.min(pos, n - 1)] + Math.floor(pos / n) * 45;
-    else if (n && !N.tripped && !pos && left[0] === 0) waitNew = 0;
+    // Wait for someone arriving now: behind everyone already queued for the same kind of port,
+    // on the suitable port that frees up next. -1 means "cannot be estimated".
+    const waitFor = car => {
+      const ok = st.ports.filter(p => !p.fault && (!car || p.car));
+      if (!ok.length) return -1;
+      const left = ok.map(p => p.s ? st.portLeft(p) : 0).sort((x, y) => x - y);
+      const pos = st.queue.filter(u => !car || st.T[u.type].car).length;
+      if (st.smart) return left[Math.min(pos, ok.length - 1)] + Math.floor(pos / ok.length) * 45;
+      return !N.tripped && !pos && left[0] === 0 ? 0 : -1;
+    };
     return {
       src: src, t: st.t, day: st.day, smart: st.smart, tripped: !!N.tripped, tripLeft: N.tripLeft || 0,
       pv: N.pv, budget: N.budget, load: N.load, batt: N.batt, grid: N.grid, gridAvail: N.gridAvail,
-      soc: st.soc, cloud: st.cloud, limiter: N.limiter, waitNew: waitNew,
-      cfg: { ports: c.ports, portMax: c.portMax, busKw: c.busKw, gridKw: c.gridKw, pvKwp: c.pvKwp, pvDerate: c.pvDerate, arrX: c.arrX, chgEff: c.chgEff, fairKwh: c.fairKwh, fairSoc: c.fairSoc, queueMax: c.queueMax },
+      soc: st.soc, cloud: st.cloud, limiter: N.limiter, waitNew: waitFor(false), waitCar: waitFor(true),
+      cfg: { ports: c.ports, portMax: c.portMax, carMax: c.carMax, busKw: c.busKw, gridKw: c.gridKw, pvKwp: c.pvKwp, pvDerate: c.pvDerate, arrX: c.arrX, chgEff: c.chgEff, fairKwh: c.fairKwh, fairSoc: c.fairSoc, queueMax: c.queueMax },
       ports: st.ports.map(p => {
         const u = p.s;
-        return { id: p.id, state: p.fault ? 'fault' : u ? u.state : 'free', set: p.set, token: u ? u.token : null, type: u ? u.type : null,
+        return { id: p.id, car: p.car, max: p.max, state: p.fault ? 'fault' : u ? u.state : 'free', set: p.set, token: u ? u.token : null, type: u ? u.type : null,
           prio: !!(u && u.prio), soc: u ? u.soc : 0, target: u ? u.target : 0, kwh: u ? u.kwh : 0, left: u ? st.portLeft(p) : 0 };
       }),
       queue: st.queue.map(u => ({ token: u.token, type: u.type, prio: u.prio, soc: u.soc, wait: isFinite(u.wait) ? u.wait : -1 }))

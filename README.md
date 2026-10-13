@@ -11,7 +11,7 @@ shows each charger's status and the waiting time.
 
 ## What is in the demo
 
-- **Live simulation** with a 3D station (10 ports, 10 kWp solar, 20 kWh battery, 3 kW grid backup)
+- **Live simulation** with a 3D station (10 ports including 2 car bays, 10 kWp solar, 20 kWh battery, 3 kW grid backup) serving e-rickshaws, scooters, cycles, phones and cars
 - **SCADA** view: KPIs, alarms that name the problem, its cause and the automatic action, fault injection
 - **Circuit and hardware**: live single-line diagram, 3D bench prototype (ESP32, INA219, MOSFET, relay), bill of materials
 - **Business and schemes**: profit calculators and the Government of India schemes that apply

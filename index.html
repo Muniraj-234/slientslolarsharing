@@ -221,7 +221,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
       <div class="panel prose">
         <span class="eyebrow">The problem</span>
         <h2>A solar charging station has a ceiling that moves with the sun. Its users do not.</h2>
-        <p class="lead">A 10 kWp array gives about 8 kW at noon, less under cloud and nothing after sunset. Ten e-rickshaws and scooters plugged in together ask for more than 10 kW.</p>
+        <p class="lead">A 10 kWp array gives about 8 kW at noon, less under cloud and nothing after sunset. Ten e-rickshaws, scooters and cars plugged in together ask for more than 10 kW.</p>
         <ul>
           <li><b>The station trips.</b> With nothing limiting the load, the converter or battery protection cuts out and every vehicle stops charging until someone unplugs.</li>
           <li><b>The first to arrive takes everything.</b> Whoever plugs in early charges at full power; the driver who arrives sixth gets a trip or nothing.</li>
@@ -237,7 +237,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
       </div>
       <div class="asks">
         <div><h3>Allocates fairly</h3><p>Max-min sharing with a guaranteed minimum. Small loads get what they need, large loads split the rest equally, priority users (ambulance e-rickshaw, health worker) count double. If power cannot cover every minimum, the least-charged vehicles go first and the order rotates every 10 minutes.</p></div>
-        <div><h3>Enforces limits</h3><p>Per-port cap of 1.5 kW, converter rating of 10 kW, backup feed rating of 3 kW, battery reserve floor at 20%, thermal derating at 70 °C, and a relay that opens when a port draws more than it was told to. While others wait, each session is capped at 3 kWh or 80% charge.</p></div>
+        <div><h3>Enforces limits</h3><p>Per-port cap of 1.5 kW (3.3 kW at the two car bays), converter rating of 10 kW, backup feed rating of 3 kW, battery reserve floor at 20%, thermal derating at 70 °C, and a relay that opens when a port draws more than it was told to. While others wait, each session is capped at 3 kWh or 80% charge.</p></div>
         <div><h3>Adapts when users join or leave</h3><p>The share is recalculated every control cycle and at once on plug-in, unplug, cloud or fault. Cuts are immediate so the limit is never crossed; increases ramp at 0.5 kW per minute so the bus stays stable.</p></div>
         <div><h3>Shows status and waiting time</h3><p>A kiosk screen shows each port's power, charge level and time left. People in the queue see an estimated wait worked out from the energy still owed to the vehicles ahead of them and the power they are receiving.</p></div>
         <div><h3>Keeps running on backup power</h3><p>When the battery falls to 30% the controller brings in a 3 kW grid backup feed, adds it to the power budget and shares it like any other source. Solar is always used first, the backup never charges the battery, and it is released when the battery recovers to 45%. If the grid is out, the station carries on with sun and battery alone.</p></div>
@@ -248,7 +248,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
         <p class="note" style="margin-bottom:10px">Average of 20 simulated days with identical arrivals and weather in both columns, run in your browser by the same model that drives the live tab. Station: 10 kWp PV, 20 kWh battery, 10 kW converter, 3 kW grid backup, 10 ports.</p>
         <div class="scroll-x"><table id="cmp"><thead><tr><th>Per day</th><th class="num">Unmanaged</th><th class="num">Silent Assassins</th><th>What it means</th></tr></thead><tbody></tbody></table></div>
         <p id="cmp-say" style="margin-top:12px"></p>
-        <p class="note" style="margin-top:6px">The controller does not create energy: both stations sell about the same number of units because the sun and the backup feed set the total. What changes is that the station stops tripping, the wait becomes short and predictable, and the energy is shared.</p>
+        <p class="note" style="margin-top:6px">The controller does not create energy. It keeps the station on line: the unmanaged station loses charging time to every trip, so it serves fewer vehicles and delivers less of the energy that was available. Car bays are the scarce resource, so the longest waits are cars waiting for one of the two bays.</p>
       </div>
 
       <div class="panel prose">
@@ -288,7 +288,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
           <div>
             <span class="lab">A vehicle arrives</span>
             <div class="row" id="add">
-              <button class="btn" data-type="rick">E-rickshaw</button><button class="btn" data-type="scoot">E-scooter</button>
+              <button class="btn" data-type="rick">E-rickshaw</button><button class="btn" data-type="scoot">E-scooter</button><button class="btn" data-type="car">E-car</button>
               <button class="btn" data-type="cycle">E-cycle</button><button class="btn" data-type="phone">Phone locker</button>
             </div>
             <label class="check"><input type="checkbox" id="prio"> Next arrival is priority</label>
@@ -421,7 +421,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
         <div class="legend" style="margin-top:8px">
           <span><i style="background:#c8322f"></i>12 V power</span><span><i style="background:#17191b"></i>Ground</span><span><i style="background:#2f6fd0"></i>PWM to MOSFET</span><span><i style="background:#e07b26"></i>Relay control</span><span><i style="background:#2c9d57"></i>I2C SDA</span><span><i style="background:#d8b22a"></i>I2C SCL</span><span><i style="background:#7a55c7"></i>Backup relay control</span>
         </div>
-        <p class="note" style="margin-top:6px">Hover a part to see what it does and its live reading. Click the red push button to add a waiting user. The bench mirrors ports 1 to 4 of the live station: 1 kW there is shown as 1 A here, LED brightness is the granted power, and the LCD shows what the firmware prints. The mains adapter and changeover relay at the front left are the backup feed.</p>
+        <p class="note" style="margin-top:6px">Power runs from the back rail towards you through each channel, and every control wire comes in from the ESP32 on the right. Hover a part to see what it does and its live reading. Click the red push button to add a waiting user. The bench mirrors ports 1 to 4 of the live station: 1 kW there is shown as 1 A here, LED brightness is the granted power, and the LCD shows what the firmware prints. The mains adapter and changeover relay in the back row are the backup feed.</p>
       </div>
 
       <div class="panel hw">
@@ -581,9 +581,9 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
   </section>
 </div>
 
-<script src="model.js?v=1"></script>
-<script src="station-link.js?v=1"></script>
-<script src="suryashare3d.js?v=6"></script>
+<script src="model.js?v=2"></script>
+<script src="station-link.js?v=2"></script>
+<script src="suryashare3d.js?v=7"></script>
 <script>
 (function () {
   'use strict';
@@ -616,7 +616,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
     st = new Station({ smart: true, seed: 21, startMin: 540, auto: true });
     st.soc = 88; st.cloud = 0.15;
     alarms = new Alarms(); hist = []; lastKey = -1;
-    ['rick', 'scoot', 'rick', 'cycle', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
+    ['rick', 'scoot', 'rick', 'cycle', 'car', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
     advance(140);
     syncControls();
   }
@@ -644,7 +644,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
       s += `<g class="branch" id="br-${i}" data-state="free">`;
       s += `<path class="c-wire" d="M${x} 150V196M${x} 236V253M${x} 271V284M${x} 304V322"/><path class="c-sig" d="M${x + 22} 178V196"/>`;
       s += `<path class="c-flow load" id="f-p${i}" d="M${x} 150V322"/>`;
-      s += `<rect class="c-box c-conv" x="${x - 37}" y="196" width="74" height="40"/><text class="c-s" x="${x - 31}" y="211">P${i + 1} DC-DC</text><text class="c-v" id="c-set${i}" x="${x - 31}" y="228"></text>`;
+      s += `<rect class="c-box c-conv" x="${x - 37}" y="196" width="74" height="40"/><text class="c-s" x="${x - 31}" y="211">P${i + 1} ${st.ports[i].car ? 'car bay' : 'DC-DC'}</text><text class="c-v" id="c-set${i}" x="${x - 31}" y="228"></text>`;
       s += `<circle class="c-box" cx="${x}" cy="262" r="9"/><text class="c-s" x="${x}" y="266" text-anchor="middle">A</text>`;
       s += `<circle cx="${x}" cy="284" r="2.5" fill="var(--ink-2)"/><circle cx="${x}" cy="304" r="2.5" fill="var(--ink-2)"/><line id="c-rel${i}" x1="${x}" y1="304" x2="${x}" y2="284" stroke="var(--ink)" stroke-width="2"/>`;
       s += `<rect class="c-box c-ldbox" x="${x - 44}" y="322" width="88" height="62"/><text class="c-t" id="c-tok${i}" x="${x - 37}" y="340"></text><text class="c-s" id="c-ty${i}" x="${x - 37}" y="355"></text><text class="c-v" id="c-st${i}" x="${x - 37}" y="374"></text>`;
@@ -703,14 +703,14 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
       if (u) {
         r.btn.dataset.token = u.token; r.tok.textContent = u.token;
         r.ty.textContent = TYPES[u.type].name + (u.prio ? ', priority' : '');
-        r.fill.style.width = (p.set / CFG.portMax * 100).toFixed(1) + '%';
-        r.mark.style.left = (u.demand / CFG.portMax * 100).toFixed(1) + '%';
+        r.fill.style.width = (p.set / p.max * 100).toFixed(1) + '%';
+        r.mark.style.left = (u.demand / p.max * 100).toFixed(1) + '%';
         r.n1.textContent = p.set.toFixed(2) + ' of ' + u.demand.toFixed(2) + ' kW';
         r.n2.textContent = Math.round(u.soc) + '% → ' + u.target + '%';
         r.n3.textContent = state === 'hold' ? 'waiting for power' : state === 'trip' ? 'station tripped' : dur(st.portLeft(p)) + ' left';
       } else {
         r.tok.textContent = ''; r.fill.style.width = '0';
-        r.ty.textContent = p.fault ? 'Relay open, needs reset' : 'Plug in here';
+        r.ty.textContent = p.fault ? 'Relay open, needs reset' : p.car ? 'Car bay, 3.3 kW' : 'Plug in here';
         r.n1.textContent = ''; r.n2.textContent = ''; r.n3.textContent = '';
       }
     });
@@ -858,7 +858,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
     $('cloud').addEventListener('input', e => { st.cloud = +e.target.value / 100; refresh(); });
     $('auto').addEventListener('change', e => { st.auto = e.target.checked; });
     $('add').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.arrive(b.dataset.type, $('prio').checked); $('prio').checked = false; refresh(); });
-    $('sc-rush').addEventListener('click', () => { jump(9 * 60); ['rick', 'rick', 'scoot', 'rick', 'scoot', 'cycle', 'rick', 'scoot', 'rick', 'rick', 'scoot', 'phone', 'rick', 'scoot'].forEach(t => st.arrive(t, false)); refresh(); });
+    $('sc-rush').addEventListener('click', () => { jump(9 * 60); ['rick', 'car', 'scoot', 'rick', 'scoot', 'cycle', 'rick', 'car', 'scoot', 'rick', 'rick', 'car', 'scoot', 'phone', 'rick', 'scoot'].forEach(t => st.arrive(t, false)); refresh(); });
     $('sc-cloud').addEventListener('click', () => { st.cloud = 0.85; $('cloud').value = 85; refresh(); });
     $('sc-eve').addEventListener('click', () => { jump(18 * 60 + 15); st.soc = 33; refresh(); });
     $('sc-reset').addEventListener('click', () => { boot(); render(); });

@@ -233,8 +233,8 @@ details .in{display:flex;flex-direction:column;gap:10px}
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </div>
 
-<script src="model.js?v=1"></script>
-<script src="station-link.js?v=1"></script>
+<script src="model.js?v=2"></script>
+<script src="station-link.js?v=2"></script>
 <script>
 (function () {
   'use strict';
@@ -248,7 +248,7 @@ details .in{display:flex;flex-direction:column;gap:10px}
   const inr = v => '₹' + Math.round(v).toLocaleString('en-IN');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const SL = { free: 'Free', full: 'Full power', shared: 'Sharing', hold: 'On hold', trip: 'Tripped', fault: 'Out of order' };
-  const SPEC = { rick: 'E-rickshaw', scoot: 'E-scooter', cycle: 'E-cycle', phone: 'Phone / power bank' };
+  const SPEC = { rick: 'E-rickshaw', scoot: 'E-scooter', cycle: 'E-cycle', phone: 'Phone / power bank', car: 'E-car' };
 
   /* ---------- what this phone remembers ---------- */
   let me = { v: { type: 'scoot', soc: 35, target: 90 }, bookings: [], session: null };
@@ -261,7 +261,7 @@ details .in{display:flex;flex-direction:column;gap:10px}
   function boot() {
     st = new Station({ smart: true, seed: 21, startMin: 540, auto: true });
     st.soc = 88; st.cloud = 0.15;
-    ['rick', 'scoot', 'rick', 'cycle', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
+    ['rick', 'scoot', 'rick', 'cycle', 'car', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
     for (let i = 0; i < 140; i++) st.step(1);
   }
   const linked = () => Date.now() - remoteAt < 3000;
@@ -300,7 +300,8 @@ details .in{display:flex;flex-direction:column;gap:10px}
     const busy = clamp(arrivalRate(t) * c.arrX * 1.2, 1, c.ports);      // vehicles expected on charge
     return { power: power, busy: busy };
   }
-  const shareOf = (type, power, vehicles) => Math.min(TYPES[type].max, snap.cfg.portMax, power / Math.max(1, vehicles));
+  const shareOf = (type, power, vehicles) => Math.min(TYPES[type].max, TYPES[type].car ? snap.cfg.carMax : snap.cfg.portMax, power / Math.max(1, vehicles));
+  const waitNow = () => TYPES[me.v.type].car ? snap.waitCar : snap.waitNew;      // cars can only use the car bays
 
   /* ---------- station screen ---------- */
   let plSig = null;
@@ -322,8 +323,9 @@ details .in{display:flex;flex-direction:column;gap:10px}
 
     $('t-free').textContent = free + ' of ' + c.ports;
     $('t-free-s').textContent = s.queue.length ? s.queue.length + ' waiting in the queue' : free ? 'no queue' : 'all in use';
-    $('t-wait').textContent = s.waitNew < 0 ? 'Unknown' : s.waitNew < 1 ? 'No wait' : '~' + dur(s.waitNew);
-    $('t-wait-s').textContent = s.waitNew < 0 ? 'station is not managed' : s.waitNew < 1 ? 'a charger is free' : 'until a charger frees up';
+    const w = waitNow(), bay = TYPES[me.v.type].car ? 'car bay' : 'charger';
+    $('t-wait').textContent = w < 0 ? 'Unknown' : w < 1 ? 'No wait' : '~' + dur(w);
+    $('t-wait-s').textContent = w < 0 ? 'cannot be estimated now' : w < 1 ? 'a ' + bay + ' is free' : 'until a ' + bay + ' frees up';
     $('t-soc').textContent = Math.round(s.soc) + '%';
     $('t-soc-s').textContent = s.batt > 0.02 ? 'helping with ' + s.batt.toFixed(1) + ' kW' : s.batt < -0.02 ? 'charging from the sun' : 'idle';
     $('t-grid').textContent = s.grid > 0.02 ? s.grid.toFixed(1) + ' kW' : s.gridAvail > 0 ? 'Ready' : 'Standby';
@@ -331,7 +333,7 @@ details .in{display:flex;flex-direction:column;gap:10px}
 
     const v = me.v, share = shareOf(v.type, s.budget, occ + (free ? 1 : 0)), need = needKwh(v);
     $('n-veh').textContent = SPEC[v.type] + ', ' + v.soc + '% now, charge to ' + v.target + '%';
-    $('n-kv').innerHTML = `<span>Wait for a charger</span><b>${s.waitNew < 0 ? 'unknown' : s.waitNew < 1 ? 'none' : '~' + dur(s.waitNew)}</b>` +
+    $('n-kv').innerHTML = `<span>Wait for a charger</span><b>${w < 0 ? 'unknown' : w < 1 ? 'none' : '~' + dur(w)}</b>` +
       `<span>Your charging power</span><b>~${share.toFixed(2)} kW</b>` +
       `<span>Charging time</span><b>${share > 0.03 ? '~' + dur(chargeMin(v.type, v.soc, v.target, share)) : 'unknown'}</b>` +
       `<span>Energy and cost</span><b>${need.toFixed(1)} kWh, about ${inr(need * PRICE)}</b>`;
@@ -345,7 +347,7 @@ details .in{display:flex;flex-direction:column;gap:10px}
     }
     [...$('plist').children].forEach((el, i) => {
       const p = s.ports[i];
-      el.lastChild.textContent = p.state === 'free' ? 'plug in here' : p.state === 'fault' ? 'being repaired' : p.state === 'trip' ? 'waiting for reset' : p.set.toFixed(2) + ' kW, ' + dur(p.left) + ' left';
+      el.lastChild.textContent = p.state === 'free' ? (p.car ? 'car bay, 3.3 kW' : 'plug in here') : p.state === 'fault' ? 'being repaired' : p.state === 'trip' ? 'waiting for reset' : p.set.toFixed(2) + ' kW, ' + dur(p.left) + ' left';
     });
     $('p-note').textContent = occ + ' charging';
   }

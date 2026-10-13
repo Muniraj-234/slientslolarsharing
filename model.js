@@ -12,6 +12,7 @@
     rampUp: 0.5,                          // setpoints rise at most this fast (kW per minute); cuts are instant
     fairKwh: 3, fairSoc: 80,              // fair-use cap per session while others wait
     rotateMin: 10,                        // how often the hold order is re-ranked when power is scarce
+    carPorts: 2, carMax: 3.3,             // the last two ports are car bays with a higher cap (kW)
     queueMax: 12, arrX: 1.8, tripMin: 5, hotC: 70, noun: 'vehicle'   // arrX scales arrivals to the larger site
   };
 
@@ -19,7 +20,9 @@
     rick:  { code: 'R', name: 'E-rickshaw',   max: 1.2,  min: 0.30, cap: 5.0 },
     scoot: { code: 'S', name: 'E-scooter',    max: 0.9,  min: 0.20, cap: 3.0 },
     cycle: { code: 'C', name: 'E-cycle',      max: 0.3,  min: 0.08, cap: 0.6 },
-    phone: { code: 'M', name: 'Phone locker', max: 0.12, min: 0.03, cap: 0.2 }
+    phone: { code: 'M', name: 'Phone locker', max: 0.12, min: 0.03, cap: 0.2 },
+    // A car only fits a car bay. It arrives for a top-up (topUp % of its battery) and has its own fair-use cap (kWh).
+    car:   { code: 'E', name: 'E-car',        max: 3.3,  min: 1.0,  cap: 30, car: true, topUp: 30, fair: 8 }
   };
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -68,7 +71,7 @@
     if (t >= 1140 && t < 1320) return 0.45;
     return 0.06;
   }
-  function pickType(r) { return r < 0.45 ? 0 : r < 0.75 ? 1 : r < 0.9 ? 2 : 3; }
+  function pickType(r) { return r < 0.4 ? 0 : r < 0.66 ? 1 : r < 0.78 ? 2 : r < 0.88 ? 3 : 4; }
 
   class Station {
     constructor(o) {
@@ -84,7 +87,7 @@
       this.backup = o.backup !== false; this.gridOn = false;
       this.cloud = 0.1; this.soc = 60; this.temp = 34; this.hot = false;
       this.ports = [];
-      for (let i = 0; i < this.c.ports; i++) this.ports.push({ id: i + 1, s: null, fault: null, comms: true, inject: false, set: 0, meas: 0 });
+      for (let i = 0; i < this.c.ports; i++) { const car = i >= this.c.ports - this.c.carPorts; this.ports.push({ id: i + 1, car: car, max: car ? this.c.carMax : this.c.portMax, s: null, fault: null, comms: true, inject: false, set: 0, meas: 0 }); }
       this.queue = [];
       this.faults = { pvString: false, fan: false, bms: false, grid: false };
       this.seq = 0; this.events = [];
@@ -95,7 +98,12 @@
     }
     abs() { return this.day * 1440 + this.t; }
     log(kind, msg) { this.events.unshift({ t: this.t, kind: kind, msg: msg }); if (this.events.length > 60) this.events.pop(); }
-    freePort() { return this.ports.find(p => !p.s && !p.fault) || null; }
+    // A car needs a car bay. Light vehicles take a light port first, and a car bay only while no car is waiting.
+    portFor(u) {
+      const free = this.ports.filter(p => !p.s && !p.fault);
+      if (this.T[u.type].car) return free.find(p => p.car) || null;
+      return free.find(p => !p.car) || (this.queue.some(q => this.T[q.type].car) ? null : free.find(p => p.car)) || null;
+    }
     tripped() { return !this.smart && this.abs() < this.tripUntil; }
     canPlug() { return this.smart || (!this.blocked && !this.tripped()); }
 
@@ -105,7 +113,7 @@
       if (this.queue.length >= this.c.queueMax) { this.m.turned++; this.log('leave', T.name + ' turned away: queue is full'); return null; }
       this.seq++;
       const s0 = soc == null ? 15 + r * 35 : soc;
-      const u = { token: T.code + '-' + String(this.seq).padStart(2, '0'), type: type, prio: !!prio, soc0: s0, soc: s0, target: 90, kwh: 0, arrived: this.abs(), demand: 0, rank: 99, state: 'queue', wait: 0 };
+      const u = { token: T.code + '-' + String(this.seq).padStart(2, '0'), type: type, prio: !!prio, soc0: s0, soc: s0, target: T.topUp ? Math.min(90, Math.round(s0 + T.topUp)) : 90, kwh: 0, arrived: this.abs(), demand: 0, rank: 99, state: 'queue', wait: 0 };
       if (u.prio && this.smart) {
         let i = 0; while (i < this.queue.length && this.queue[i].prio) i++;
         this.queue.splice(i, 0, u);
@@ -115,9 +123,11 @@
       return u;
     }
     fillPorts() {
-      let p;
-      while (this.queue.length && (p = this.freePort()) && this.canPlug()) {
-        const u = this.queue.shift();
+      if (!this.canPlug()) return;
+      for (let i = 0; i < this.queue.length;) {
+        const u = this.queue[i], p = this.portFor(u);
+        if (!p) { i++; continue; }                 // no suitable port yet: the next in line may still fit
+        this.queue.splice(i, 1);
         p.s = u; p.set = 0; u.state = 'full'; u.plugged = this.abs();
         if (u.waited == null) {
           u.waited = u.plugged - u.arrived;
@@ -185,7 +195,7 @@
       act.forEach(p => {
         const u = p.s, T = this.T[u.type];
         const taper = u.soc < 80 ? 1 : 1 - 0.7 * (u.soc - 80) / 20;
-        u.demand = Math.min(this.c.portMax, T.max * taper);
+        u.demand = Math.min(p.max, T.max * taper);
         if (!p.comms && this.smart) u.demand = Math.min(u.demand, T.min);   // fail-safe: no feedback, minimum power only
       });
       N.demand = act.reduce((s, p) => s + p.s.demand, 0);
@@ -194,7 +204,7 @@
       if (this.smart) {
         act.filter(p => p.inject).forEach(p => this.isolate(p, 'oc'));
         const live = this.ports.filter(p => p.s && !p.fault);
-        live.forEach(p => { if (!p.s.demand) { const T = this.T[p.s.type]; p.s.demand = Math.min(this.c.portMax, T.max); } });
+        live.forEach(p => { if (!p.s.demand) { const T = this.T[p.s.type]; p.s.demand = Math.min(p.max, T.max); } });
         N.demand = live.reduce((s, p) => s + p.s.demand, 0);
         if (this.rankDirty || abs - this.rankAt >= this.c.rotateMin) {
           const prog = u => (u.soc - u.soc0) / Math.max(1, u.target - u.soc0);
@@ -268,7 +278,7 @@
       this.ports.forEach(p => {
         const u = p.s; if (!u) return;
         if (u.soc >= u.target - 0.01) this.release(p, 'full');
-        else if (this.smart && this.queue.length && !u.prio && (u.kwh >= this.c.fairKwh || u.soc >= this.c.fairSoc)) this.release(p, 'fair');
+        else if (this.smart && this.queue.length && !u.prio && (u.kwh >= (this.T[u.type].fair || this.c.fairKwh) || u.soc >= this.c.fairSoc)) this.release(p, 'fair');
       });
 
       // Converter temperature (first-order lag)
@@ -299,7 +309,7 @@
       const occ = Math.max(1, this.ports.filter(q => q.s).length);
       const fair = this.smart && !u.prio && this.queue.length > 0;
       let need = Math.max(0, ((fair ? Math.min(u.target, Math.max(this.c.fairSoc, u.soc)) : u.target) - u.soc) / 100 * T.cap);
-      if (fair) need = Math.min(need, Math.max(0, this.c.fairKwh - u.kwh));
+      if (fair) need = Math.min(need, Math.max(0, (T.fair || this.c.fairKwh) - u.kwh));
       const pw = Math.max(p.set, 0.5 * Math.min(u.demand || T.max, N.budget / occ), 0.05) * this.c.chgEff;
       return need / pw * 60;
     }
@@ -312,11 +322,12 @@
       const free = usable.map(p => p.s ? this.portLeft(p) : 0);
       const occ = usable.filter(p => p.s).length;
       this.queue.forEach(u => {
-        let i = 0;
-        for (let k = 1; k < free.length; k++) if (free[k] < free[i]) i = k;
-        u.wait = free[i] + sunDelay + (this.tripped() ? this.tripUntil - this.abs() : 0);
         const T = this.T[u.type];
-        const need = Math.max(0, Math.min(this.c.fairKwh, (Math.min(u.target, this.c.fairSoc) - u.soc) / 100 * T.cap));
+        let i = -1;                                  // the suitable port that frees up first
+        for (let k = 0; k < free.length; k++) if ((!T.car || usable[k].car) && (i < 0 || free[k] < free[i])) i = k;
+        if (i < 0) { u.wait = Infinity; return; }
+        u.wait = free[i] + sunDelay + (this.tripped() ? this.tripUntil - this.abs() : 0);
+        const need = Math.max(0, Math.min(T.fair || this.c.fairKwh, (Math.min(u.target, this.c.fairSoc) - u.soc) / 100 * T.cap));
         const pw = Math.max(0.1, Math.min(T.max, Math.max(N.budget, 0.5) / Math.min(usable.length, occ + 1))) * this.c.chgEff;
         free[i] += need / pw * 60;
       });

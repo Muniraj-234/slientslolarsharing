@@ -280,16 +280,18 @@
     const ports = [];
     for (let i = 0; i < NP; i++) {
       const x = px(i), ly = i % 2 ? 4.2 : 5.2;          // signboards above the canopy, staggered so neighbours do not overlap
-      box(0.34, 1.2, 0.24, eq, x, PAD + 0.6, 0, sc);
+      const car = !!S.ports[i].car, ph = car ? 1.45 : 1.2;   // car bays: taller pedestal in the brand colour on a painted bay
+      box(0.34, ph, 0.24, car ? M('#1a5a78', 0.5) : eq, x, PAD + ph / 2, 0, sc);
+      if (car) box(1.9, 0.012, 3.6, M('#86b3a2', 0.9), x, PAD + 0.004, 2.5, sc);
       box(0.1, 0.8, 0.02, dark, x, PAD + 0.65, 0.125, sc);
       const fg = new THREE.BoxGeometry(0.08, 0.8, 0.02); fg.translate(0, 0.4, 0);
       const fill = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: C(COL.load).clone() })); fill.position.set(x, PAD + 0.25, 0.13); sc.add(fill);
       box(0.06, 0.1, 0.16, dark, x, PAD + 0.17, -0.25, sc);
-      bar([x, PAD + 1.3, 0], [x, ly - 0.46, 0.4], 0.012, dark, sc);
+      bar([x, PAD + ph + 0.1, 0], [x, ly - 0.46, 0.4], 0.012, dark, sc);
       const fp = path([[XC, 0.3, -0.45], [x, 0.3, -0.45], [x, 0.3, -0.16], [x, 1.0, -0.16]]);
       ports.push({
-        x: x, state: 'free', kw: 0, fill: fill,
-        lamp: box(0.36, 0.1, 0.26, glow(COL.idle, 0.6), x, PAD + 1.25, 0, sc),
+        x: x, state: 'free', kw: 0, fill: fill, max: S.ports[i].max,
+        lamp: box(0.36, 0.1, 0.26, glow(COL.idle, 0.6), x, PAD + ph + 0.05, 0, sc),
         label: new Label(3.6, sc, x, ly, 0.4),
         flow: new Flow(fp, COL.load, 4 + Math.round(fp.getLength() / 1.4), 0.07, 3.4, sc)
       });
@@ -308,7 +310,7 @@
         [[-0.48, -1.05], [0.48, -1.05], [-0.42, 0.92], [0.42, 0.92]].forEach(p => bar([p[0], 0.8, p[1]], [p[0], 1.74, p[1]], 0.025, steel, g));
         wheel(0.23, 0.1, 0, 0.23, 1.15, g); wheel(0.23, 0.1, -0.55, 0.23, -0.7, g); wheel(0.23, 0.1, 0.55, 0.23, -0.7, g);
         bar([0, 0.25, 1.15], [0, 1.0, 0.85], 0.03, steel, g); bar([-0.3, 1.0, 0.82], [0.3, 1.0, 0.82], 0.025, dk, g);
-        return { plug: [0.3, 0.55, -1.1], top: 1.8, z: 1.75 };
+        return { plug: [0.3, 0.55, -1.1], top: 1.8, z: 1.75, len: 2.5 };
       },
       scoot: function (g, hue) {
         const body = M(hue, 0.5);
@@ -317,7 +319,7 @@
         box(0.36, 0.62, 0.07, body, 0, 0.6, 0.42, g).rotation.x = -0.25;
         bar([0, 0.22, 0.62], [0, 1.02, 0.36], 0.03, steel, g); bar([-0.28, 1.02, 0.36], [0.28, 1.02, 0.36], 0.022, dk, g);
         box(0.16, 0.12, 0.08, M('#f4f0d0', 0.4), 0, 0.92, 0.43, g);
-        return { plug: [0.19, 0.5, -0.75], top: 1.15, z: 1.35 };
+        return { plug: [0.19, 0.5, -0.75], top: 1.15, z: 1.35, len: 1.8 };
       },
       cycle: function (g, hue) {
         const body = M(hue, 0.5), A = [0, 0.35, -0.52], BB = [0, 0.32, -0.03], ST = [0, 0.84, -0.2], HT = [0, 0.88, 0.36], F = [0, 0.35, 0.52];
@@ -325,20 +327,31 @@
         [[A, BB], [BB, ST], [ST, A], [ST, HT], [BB, HT], [HT, F]].forEach(s => bar(s[0], s[1], 0.022, body, g));
         box(0.12, 0.05, 0.26, dk, 0, 0.88, -0.22, g); bar([-0.26, 1.0, 0.36], [0.26, 1.0, 0.36], 0.018, dk, g); bar(HT, [0, 1.0, 0.36], 0.018, steel, g);
         box(0.08, 0.1, 0.36, M('#2b3338', 0.6), 0, 0.6, 0.165, g).rotation.x = -0.96;
-        return { plug: [0.06, 0.6, 0], top: 1.1, z: 1.25 };
+        return { plug: [0.06, 0.6, 0], top: 1.1, z: 1.25, len: 1.8 };
       },
       phone: function (g, hue) {       // a person charging a phone at the locker port
         cyl(0.09, 0.8, dk, -0.1, 0.4, 0, g, 8); cyl(0.09, 0.8, dk, 0.1, 0.4, 0, g, 8);
         box(0.42, 0.6, 0.24, M(hue, 0.8), 0, 1.1, 0, g);
         add(new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), M('#c68c5e', 0.8)), 0, 1.58, 0, g);
         box(0.09, 0.16, 0.02, M('#101214', 0.3), 0.26, 1.05, 0.14, g);
-        return { plug: [0.26, 1.0, 0.1], top: 1.75, z: 0.95 };
+        return { plug: [0.26, 1.0, 0.1], top: 1.75, z: 0.95, len: 0.9 };
+      },
+      car: function (g, hue) {         // compact city EV, 3.2 m long
+        const body = M(hue, 0.35, 0.3), win = M('#16222b', 0.15, 0.2);
+        box(1.5, 0.52, 3.2, body, 0, 0.56, 0, g);
+        box(1.36, 0.46, 1.75, win, 0, 1.03, -0.2, g); box(1.4, 0.07, 1.55, body, 0, 1.29, -0.2, g);
+        [[-0.66, 0.62], [0.66, 0.62], [-0.66, -1.02], [0.66, -1.02]].forEach(p => bar([p[0], 0.8, p[1]], [p[0], 1.28, p[1] + (p[1] > 0 ? -0.12 : 0.1)], 0.045, body, g));
+        box(1.5, 0.14, 0.1, dk, 0, 0.36, 1.6, g); box(1.5, 0.14, 0.1, dk, 0, 0.36, -1.6, g);
+        [-0.5, 0.5].forEach(x => { box(0.34, 0.12, 0.04, glow('#fff3c4', 0.9), x, 0.66, 1.61, g); box(0.3, 0.1, 0.04, glow(COL.crit, 0.7), x, 0.68, -1.61, g); });
+        [[-0.72, 1.02], [0.72, 1.02], [-0.72, -1.02], [0.72, -1.02]].forEach(p => wheel(0.3, 0.2, p[0], 0.3, p[1], g));
+        box(0.16, 0.16, 0.03, dk, 0.5, 0.7, -1.615, g);                // charge flap at the rear
+        return { plug: [0.5, 0.7, -1.64], top: 1.38, z: 2.5, len: 3.5 };
       }
     };
-    const HUES = { rick: ['#3d7a8c', '#6f8440', '#8c5a3d'], scoot: ['#b8433f', '#3f5fb8', '#c9ccce'], cycle: ['#c2562d', '#2f6f6a', '#4a4f91'], phone: ['#3f6f9c', '#9c5a7c', '#5c8a4a'] };
+    const HUES = { rick: ['#3d7a8c', '#6f8440', '#8c5a3d'], scoot: ['#b8433f', '#3f5fb8', '#c9ccce'], cycle: ['#c2562d', '#2f6f6a', '#4a4f91'], phone: ['#3f6f9c', '#9c5a7c', '#5c8a4a'], car: ['#c9ced2', '#2e5aa8', '#a8322e'] };
     const vehs = new Map();     // session object -> its 3D vehicle
 
-    function place(u, port, k) {
+    function place(u, port) {
       let vh = vehs.get(u);
       if (!vh) {
         const g = new THREE.Group(), spec = (MAKE[u.type] || MAKE.scoot)(g, (HUES[u.type] || HUES.scoot)[parseInt(u.token.slice(-2), 10) % 3]);
@@ -349,9 +362,10 @@
       }
       if (vh.port !== port) { unplug(vh); vh.port = port; }
       if (port >= 0) { vh.tx = px(port); vh.tz = vh.spec.z; vh.ry = 0; vh.order = 'xz'; }
-      else { vh.tx = XE - 2 - k * 2.3; vh.tz = LANE; vh.ry = -Math.PI / 2; vh.order = 'zx'; }
+      else { vh.tz = LANE; vh.ry = -Math.PI / 2; vh.order = 'zx'; }
       vh.tag.sp.visible = port < 0;
       if (port < 0) vh.tag.set(u.token + (u.prio ? ' ★' : ''), S.smart ? 'wait ~' + dur(u.wait) : 'wait unknown', COL.warn);
+      return vh;
     }
     function unplug(vh) {
       if (!vh.cable) return;
@@ -369,11 +383,12 @@
       S.ports.forEach((p, i) => {
         const R = ports[i], u = p.s, state = p.fault ? 'fault' : u ? u.state : 'free';
         R.state = state; R.kw = p.set;
-        R.fill.scale.y = Math.max(0.001, p.set / S.c.portMax); R.fill.visible = p.set > 0.01;
+        R.fill.scale.y = Math.max(0.001, p.set / p.max); R.fill.visible = p.set > 0.01;
         R.label.set('P' + p.id + ' ' + (p.fault ? 'FAULT' : !u ? 'free' : state === 'hold' ? 'hold' : state === 'trip' ? 'TRIP' : p.set.toFixed(2) + 'kW'), '', LAMP[state]);
-        if (u) { seen.add(u); place(u, i, -1); }
+        if (u) { seen.add(u); place(u, i); }
       });
-      S.queue.forEach((u, k) => { seen.add(u); place(u, -1, k); });
+      let qx = XE - 1;                                    // the lane fills from the east end, each vehicle taking its own length
+      S.queue.forEach(u => { seen.add(u); const vh = place(u, -1); qx -= vh.spec.len / 2; vh.tx = qx; qx -= vh.spec.len / 2 + 0.5; });
       vehs.forEach((vh, u) => {
         if (seen.has(u) || vh.gone) return;
         unplug(vh); vh.gone = true; vh.port = -1; vh.tag.sp.visible = false;
@@ -422,7 +437,7 @@
       gridFlow.set(dt, N.grid, 3); dropFlow.set(dt, N.grid, 3);
       const blink = Math.sin(now * 7) > 0, trip = !S.smart && N.tripped;
       ports.forEach(R => {
-        R.flow.set(dt, R.kw, 1.5);
+        R.flow.set(dt, R.kw, R.max);
         R.lamp.material.emissive.copy(C(trip ? COL.crit : LAMP[R.state]));
         R.lamp.material.emissiveIntensity = R.state === 'free' ? 0.45 : (trip || R.state === 'fault' || R.state === 'hold') && !blink ? 0.15 : 1.4;
       });
@@ -438,7 +453,7 @@
         p.y = p.z < 4.4 ? PAD : 0.04;
         if (vh.gone) { if (there) { sc.remove(vh.g); vehs.delete(u); } return; }
         if (vh.port >= 0 && there && !vh.cable && Math.abs(vh.g.rotation.y) < 0.02) plugIn(vh);
-        if (vh.cable) vh.cable.flow.set(dt, ports[vh.port].kw, 1.5);
+        if (vh.cable) vh.cable.flow.set(dt, ports[vh.port].kw, ports[vh.port].max);
       });
     }
     return { sync: sync, tick: tick };
@@ -449,151 +464,172 @@
      It mirrors ports 1 to 4 of the live station: 1 kW there is shown as 1 A here.
      ===================================================================== */
   function buildBench(v) {
-    const sc = v.scene, zr = [-10.5, -3.5, 3.5, 10.5], rows = [];
+    /* Layout, back to front, so that it reads like the schematic:
+         back row     solar panel | backup input | 5 V buck | LCD
+         12 V rail    one bar feeding four identical port channels that run towards the viewer
+         each channel current sensor -> MOSFET -> relay -> LED load -> ground bar at the front edge
+       Power runs down the left of each channel; every control wire comes in from the right, from the ESP32.
+       All wires lie flat and turn at right angles, and parallel wires are nested so they do not cross. */
+    const sc = v.scene, xs = [-9, -1, 7, 15], rows = [];
     const silver = M('#c3c8cb', 0.3, 0.85), black = M('#141618', 0.6), gold = M('#c9a23c', 0.35, 0.8), blueT = M('#2d6cc0', 0.5), greenT = M('#2f9a5a', 0.5);
-    const W = { red: M('#c8322f', 0.55), blk: M('#17191b', 0.6), blue: M('#2f6fd0', 0.55), org: M('#e07b26', 0.55), grn: M('#2c9d57', 0.55), yel: M('#d8b22a', 0.55), wht: M('#e6e6e0', 0.55) };
-    const part = (x, z, name, role, live, click) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.userData.info = { name: name, role: role, live: live, click: click }; sc.add(g); v.picks.push(g); return g; };
+    const W = { red: M('#c8322f', 0.55), blk: M('#17191b', 0.6), blue: M('#2f6fd0', 0.55), org: M('#e07b26', 0.55), grn: M('#2c9d57', 0.55), yel: M('#d8b22a', 0.55), wht: M('#e6e6e0', 0.55), pur: M('#7a55c7', 0.55) };
+    // turn = true lays a part out along the channel (its local +x points towards the viewer)
+    const part = (x, z, name, role, live, click, turn) => { const g = new THREE.Group(); g.position.set(x, 0, z); if (turn) g.rotation.y = -Math.PI / 2; g.userData.info = { name: name, role: role, live: live, click: click }; sc.add(g); v.picks.push(g); return g; };
+    const run = (pts, m, r) => tube(path(pts), r || 0.12, m, sc);
     const P = i => S.ports[i] || { set: 0, s: null, fault: null, comms: true };
     const amps = i => P(i).set, duty = i => Math.round(clamp(P(i).set / S.c.portMax, 0, 1) * 100);
     const closed = i => !!P(i).s && !P(i).fault;
 
-    sc.background = new THREE.Color(); sc.fog = new THREE.Fog(0x000000, 110, 260);
+    sc.background = new THREE.Color(); sc.fog = new THREE.Fog(0x000000, 120, 280);
     sc.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a4, 0.75));
     const key = new THREE.DirectionalLight(0xffffff, 0.95); key.position.set(-25, 70, 35); key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -45, right: 45, top: 35, bottom: -35, near: 10, far: 180 }); key.shadow.camera.updateProjectionMatrix(); key.shadow.bias = -0.0008;
+    key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -48, right: 48, top: 38, bottom: -38, near: 10, far: 190 }); key.shadow.camera.updateProjectionMatrix(); key.shadow.bias = -0.0008;
     sc.add(key);
     const table = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ roughness: 1 })); table.rotation.x = -Math.PI / 2; table.position.y = -0.82; table.receiveShadow = true; sc.add(table);
     const theme = () => { const c = new THREE.Color(css('--panel-2') || '#e3e8ea'); sc.background.copy(c); sc.fog.color.copy(c).convertSRGBToLinear(); table.material.color.copy(c).convertSRGBToLinear(); };
     theme();
     if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener ? mq.addEventListener.bind(mq, 'change') : mq.addListener.bind(mq))(theme); }
-    box(64, 0.8, 39, M('#ddd8ca', 0.85), 0, -0.4, 0, sc);
+    box(72, 0.8, 47, M('#ddd8ca', 0.85), 0.5, -0.4, 0, sc);
 
-    // power sources down the left edge
-    let g = part(-23, -13.5, 'Solar panel, 12 V 20 W', 'The energy source. On the bench a lamp or the sun; its output sets the power budget.', () => 'station PV now ' + S.now.pv.toFixed(2) + ' kW');
-    const pvm = new THREE.Mesh(new THREE.BoxGeometry(12, 0.35, 8.5), new THREE.MeshStandardMaterial({ map: cellTexture(), roughness: 0.28, metalness: 0.35 }));
-    add(pvm, 0, 3.2, 0, g).rotation.x = 0.6;
+    /* ---- power sources, left edge ---- */
+    let g = part(-25, -15.5, 'Solar panel, 12 V 20 W', 'The energy source. On the bench a lamp or the sun; its output sets the power budget.', () => 'station PV now ' + S.now.pv.toFixed(2) + ' kW');
+    add(new THREE.Mesh(new THREE.BoxGeometry(12, 0.35, 8.5), new THREE.MeshStandardMaterial({ map: cellTexture(), roughness: 0.28, metalness: 0.35 })), 0, 3.2, 0, g).rotation.x = 0.6;
     bar([-5, 0, -3.2], [-5, 5.4, -3.2], 0.18, silver, g); bar([5, 0, -3.2], [5, 5.4, -3.2], 0.18, silver, g); box(11, 0.4, 0.6, silver, 0, 0.2, 3.4, g);
 
-    g = part(-23, 10.5, 'Solar charge controller, 10 A', 'Charges the battery from the panel (PWM or MPPT) and protects it from overcharge and deep discharge.', () => 'battery ' + Math.round(S.soc) + '%' + (S.faults.bms ? ', BMS fault' : ''));
+    g = part(-25, -3, 'Solar charge controller, 10 A', 'Charges the battery from the panel (PWM or MPPT) and protects it from overcharge and deep discharge.', () => 'battery ' + Math.round(S.soc) + '%' + (S.faults.bms ? ', BMS fault' : ''));
     box(8.5, 2.4, 5.2, M('#1d3f5e', 0.5), 0, 1.2, 0, g);
     box(3, 0.06, 1.6, glow('#9fe0b0', 0.9), -1.4, 2.43, -0.7, g);
     [COL.good, COL.warn, COL.crit].forEach((c, k) => cyl(0.18, 0.08, glow(c, k === 0 ? 1.2 : 0.15), 1.4 + k * 0.8, 2.44, -0.7, g, 10));
     box(7.6, 0.9, 1.1, M('#2a2e33', 0.6), 0, 0.45, 3.1, g);
     for (let k = 0; k < 6; k++) cyl(0.22, 0.12, silver, -3 + k * 1.2, 0.95, 3.1, g, 10);
 
-    g = part(-22.5, -2.5, 'Battery, 12 V 7 Ah', 'Buffer between the sun and the loads. The controller keeps a 20% reserve and derates below 30%.', () => Math.round(S.soc) + '% charge, ' + (S.now.batt > 0.02 ? 'discharging' : S.now.batt < -0.02 ? 'charging' : 'idle'));
-    box(15, 8.6, 6.5, M('#2d3238', 0.6), 0, 4.3, 0, g); box(15.1, 0.9, 6.6, M('#3b4249', 0.6), 0, 9.05, 0, g);
-    const bl = new Screen(360, 150, '#12806a', '#f1f5f6', 40); bl.set(['12 V  7 Ah', 'RECHARGEABLE']);
-    add(new THREE.Mesh(new THREE.PlaneGeometry(9, 3.75), new THREE.MeshBasicMaterial({ map: bl.tex })), 0, 4.4, 3.27, g);
-    box(0.9, 0.4, 0.9, W.red, 5.5, 9.7, 0, g); box(0.5, 1.1, 0.12, silver, 5.5, 10.2, 0, g);
-    box(0.9, 0.4, 0.9, W.blk, -5.5, 9.7, 0, g); box(0.5, 1.1, 0.12, silver, -5.5, 10.2, 0, g);
+    g = part(-24.5, 12, 'Battery, 12 V 7 Ah', 'Buffer between the sun and the loads. The controller keeps a 20% reserve and derates below 30%.', () => Math.round(S.soc) + '% charge, ' + (S.now.batt > 0.02 ? 'discharging' : S.now.batt < -0.02 ? 'charging' : 'idle'));
+    box(15, 6.5, 9.4, M('#2d3238', 0.6), 0, 3.25, 0, g); box(15.1, 0.5, 9.5, M('#3b4249', 0.6), 0, 6.3, 0, g);
+    const bl = new Screen(360, 120, '#12806a', '#f1f5f6', 40); bl.set(['12 V  7 Ah', 'RECHARGEABLE']);
+    add(new THREE.Mesh(new THREE.PlaneGeometry(9, 3), new THREE.MeshBasicMaterial({ map: bl.tex })), 0, 3.1, 4.72, g);
+    box(1.3, 0.4, 1.0, W.red, 4.5, 6.75, 3.2, g); box(0.5, 0.9, 0.12, silver, 4.5, 7.2, 3.2, g);
+    box(1.3, 0.4, 1.0, W.blk, -4.5, 6.75, 3.2, g); box(0.5, 0.9, 0.12, silver, -4.5, 7.2, 3.2, g);
 
-    g = part(-13.5, 0, '12 V load rail', 'Lever-terminal strip that fans the battery supply out to the four port channels.', () => 'total ' + [0, 1, 2, 3].reduce((s, i) => s + amps(i), 0).toFixed(2) + ' A');
-    box(1.5, 1.0, 27, M('#d9dcdd', 0.6), 0, 0.5, 0, g);
-    [-12.2, -10.5, -3.5, 3.5, 10.5, 12.4].forEach(z => box(1.1, 0.35, 1.3, M('#e8792b', 0.5), 0, 1.15, z, g));
+    // panel -> controller along the left edge; controller -> battery up its back face
+    const pvRun = path([[-24.7, 0.9, -11.9], [-24.7, 0.5, -10.4], [-30.4, 0.5, -10.4], [-30.4, 0.5, 1.5], [-28, 0.5, 1.5], [-28, 0.95, 0.3]]);
+    tube(pvRun, 0.2, W.red, sc);
+    run([[-25.3, 0.9, -11.9], [-25.3, 0.5, -11], [-31, 0.5, -11], [-31, 0.5, 2.1], [-26.8, 0.5, 2.1], [-26.8, 0.95, 0.3]], W.blk, 0.2);
+    run([[-24.4, 0.95, 0.3], [-24.4, 0.5, 3], [-20.6, 0.5, 3], [-20.6, 0.5, 7], [-20.6, 6.85, 7.12], [-20.6, 6.85, 15.2]], W.red, 0.2);
+    run([[-25.6, 0.95, 0.3], [-25.6, 0.5, 3.6], [-28.4, 0.5, 3.6], [-28.4, 0.5, 7], [-28.4, 6.85, 7.12], [-28.4, 6.85, 15.2]], W.blk, 0.2);
+    // battery + -> fuse -> 12 V rail; battery - -> ground bar along the front edge
+    const feed = path([[-19.6, 6.85, 15.2], [-16.6, 6.85, 15.2], [-16.6, 0.5, 15.4], [-15, 0.5, 15.4], [-15, 0.5, -8.5], [-12.8, 0.95, -8.5]]);
+    tube(feed, 0.22, W.red, sc);
+    bar([-15, 0.5, 0.5], [-15, 0.5, 3.5], 0.5, black, part(0, 0, '10 A fuse', 'Protects the battery wiring if anything downstream shorts.', null));
+    run([[-29, 6.85, 15.6], [-29, 6.85, 16.95], [-29, 0.5, 17.1], [-29, 0.5, 20.6], [-12.8, 0.7, 20.6]], W.blk, 0.22);
 
-    g = part(-6, 16.3, 'Buck converter, 12 V to 5 V', 'Steps the battery voltage down to power the ESP32, relays and display.', null);
-    box(4.4, 0.16, 2.2, M('#1f4fa8', 0.5), 0, 0.6, 0, g); box(1.2, 0.75, 1.2, M('#3c3f43', 0.5), 0.6, 1.05, 0, g);
-    cyl(0.42, 1.0, black, -1.6, 1.18, 0.3, g, 14); cyl(0.42, 1.0, black, 1.75, 1.18, -0.35, g, 14);
-    box(0.6, 0.2, 0.7, black, -0.55, 0.78, -0.35, g); box(0.6, 0.45, 0.28, M('#2b62c9', 0.5), -0.5, 0.9, 0.8, g); cyl(0.1, 0.5, gold, -0.5, 0.95, 0.8, g, 8);
+    g = part(3, -8.5, '12 V load rail', 'Lever-terminal strip that fans the battery supply out to the four port channels, the buck converter and the backup input.', () => 'total ' + [0, 1, 2, 3].reduce((s, i) => s + amps(i), 0).toFixed(2) + ' A');
+    box(31.5, 1.0, 1.5, M('#d9dcdd', 0.6), 0, 0.5, 0, g);
+    [-15.4, 1, 7].concat(xs.map(x => x - 3.3)).forEach(x => box(1.3, 0.35, 1.1, M('#e8792b', 0.5), x, 1.15, 0, g));
+    g = part(3, 20.6, 'Ground bar', 'Common return for the four loads, wired back to the battery negative terminal.', null);
+    box(31.5, 0.9, 1.3, M('#2a2e33', 0.6), 0, 0.45, 0, g);
+    for (let k = 0; k < 10; k++) cyl(0.25, 0.12, gold, -14 + k * 3.1, 0.95, 0, g, 10);
 
-    g = part(-19.6, 16.2, 'Backup input: 12 V mains adapter + changeover relay', 'The backup feed on the bench. The ESP32 closes this relay (GPIO5) when the battery is low, so a mains adapter helps carry the load rail.', () => !S.backup ? 'switched off' : S.faults.grid ? 'no mains: backup unavailable' : S.now.gridAvail > 0 ? 'ENGAGED: station backup at ' + S.now.grid.toFixed(2) + ' kW' : 'standby');
+    /* ---- back row: backup input and the 5 V supply for the electronics ---- */
+    g = part(4, -14.8, 'Backup input: 12 V mains adapter + changeover relay', 'The backup feed on the bench. The ESP32 closes this relay (GPIO5) when the battery is low, so a mains adapter helps carry the load rail.', () => !S.backup ? 'switched off' : S.faults.grid ? 'no mains: backup unavailable' : S.now.gridAvail > 0 ? 'ENGAGED: station backup at ' + S.now.grid.toFixed(2) + ' kW' : 'standby', null, true);
     box(4.6, 0.16, 2.6, M('#b3272d', 0.5), 0, 0.6, 0, g); box(1.9, 1.55, 1.5, M('#1f5fbf', 0.35), 0.2, 1.45, 0.1, g);
     box(0.8, 0.9, 2.2, blueT, 1.85, 1.1, 0, g); box(0.5, 0.6, 1.2, black, -1.95, 0.98, 0, g);
     box(1.5, 1.1, 1.3, black, -3.6, 0.55, 0, g); cyl(0.28, 0.5, silver, -4.5, 0.6, 0, g, 10).rotation.z = Math.PI / 2;
     const bled = box(0.24, 0.14, 0.14, glow(COL.grid, 0.1), -1.2, 0.76, 0.8, g);
-    const backRun = path([[-17.3, 0.9, 16.2], [-15.4, 0.8, 16.2], [-15.4, 0.8, 12.6], [-14.2, 0.9, 12.6]]);
+    const backRun = path([[4, 1.05, -12.6], [4, 0.95, -9.3]]);
     tube(backRun, 0.2, W.red, sc);
-    tube(path([[21.9, 1.3, 14.2], [21.3, 0.3, 14.2], [21.3, 0.3, 18.9], [-19.6, 0.3, 18.9], [-19.6, 0.7, 17.4]]), 0.11, M('#7a55c7', 0.55), sc);
-    const backFlow = new Flow(backRun, COL.grid, 5, 0.34, 8, sc);
 
-    // four port channels: current sensor -> MOSFET -> relay -> load
-    zr.forEach((z, i) => {
-      const n = i + 1, addr = ['0x40', '0x41', '0x44', '0x45'][i], pwm = [25, 26, 27, 14][i], rly = [32, 33, 16, 17][i];
-      g = part(-8, z, 'INA219 current sensor, port ' + n, 'Measures the port current over I2C (' + addr + '). The controller isolates a port that draws 20% more than its setpoint.', () => P(i).comms ? 'reading ' + amps(i).toFixed(2) + ' A' : 'no reading: port held at minimum power');
+    g = part(13, -15, 'Buck converter, 12 V to 5 V', 'Steps the battery voltage down to power the ESP32, relays and display.', null);
+    box(4.4, 0.16, 2.2, M('#1f4fa8', 0.5), 0, 0.6, 0, g); box(1.2, 0.75, 1.2, M('#3c3f43', 0.5), 0.6, 1.05, 0, g);
+    cyl(0.42, 1.0, black, -1.6, 1.18, 0.3, g, 14); cyl(0.42, 1.0, black, 1.75, 1.18, -0.35, g, 14);
+    box(0.6, 0.2, 0.7, black, -0.55, 0.78, -0.35, g); box(0.6, 0.45, 0.28, M('#2b62c9', 0.5), -0.5, 0.9, 0.8, g); cyl(0.1, 0.5, gold, -0.5, 0.95, 0.8, g, 8);
+    run([[10, 1.05, -9.25], [10, 0.5, -10.2], [10, 0.5, -15], [10.75, 0.75, -15]], W.red, 0.16);
+    // 5 V and the backup-relay control wire share one lane behind the back row and up the right edge
+    run([[15.4, 0.75, -15], [16.4, 0.3, -15], [16.4, 0.3, -19.6], [31, 0.3, -19.6], [31, 0.3, -3.2], [29.1, 1.05, -3.2]], W.red);
+    run([[4, 1.0, -16.9], [6.4, 0.3, -16.9], [6.4, 0.3, -20.1], [31.5, 0.3, -20.1], [31.5, 0.3, -2.4], [29.1, 1.05, -2.4]], W.pur);
+
+    /* ---- four port channels ---- */
+    xs.forEach((x, i) => {
+      const n = i + 1, addr = ['0x40', '0x41', '0x44', '0x45'][i], pwm = [25, 26, 27, 14][i], rly = [32, 33, 16, 17][i], xp = x - 0.3, k = 3 - i;
+      g = part(x, -2, 'INA219 current sensor, port ' + n, 'Measures the port current over I2C (' + addr + '). The controller isolates a port that draws 20% more than its setpoint.', () => P(i).comms ? 'reading ' + amps(i).toFixed(2) + ' A' : 'no reading: port held at minimum power', null, true);
       box(3.2, 0.16, 2.4, M('#5a3d91', 0.5), 0, 0.6, 0, g); box(0.9, 0.3, 0.5, black, 0, 0.83, 0.1, g); box(0.45, 0.14, 0.45, black, 0, 0.75, -0.55, g);
       box(0.7, 0.85, 1.3, blueT, -1.2, 1.1, 0.4, g); box(0.7, 0.85, 1.3, blueT, 1.2, 1.1, 0.4, g);
-      box(1.9, 0.5, 0.26, black, 0, 0.93, -1.0, g); for (let k = 0; k < 6; k++) box(0.07, 0.5, 0.07, gold, -0.75 + k * 0.3, 1.4, -1.0, g);
+      box(1.9, 0.5, 0.26, black, 0, 0.93, -1.0, g); for (let j = 0; j < 6; j++) box(0.07, 0.5, 0.07, gold, -0.75 + j * 0.3, 1.4, -1.0, g);
 
-      g = part(-1.5, z, 'IRLZ44N MOSFET, port ' + n, 'Sets the port power by PWM from GPIO' + pwm + ' (220 Ω gate resistor, 10 kΩ pull-down). The commercial unit uses a CC/CV DC-DC module here.', () => 'duty ' + duty(i) + '%');
+      g = part(x, 4.5, 'IRLZ44N MOSFET, port ' + n, 'Sets the port power by PWM from GPIO' + pwm + ' (220 Ω gate resistor, 10 kΩ pull-down). The commercial unit uses a CC/CV DC-DC module here.', () => 'duty ' + duty(i) + '%', null, true);
       box(3.4, 0.16, 3.0, M('#b98a4a', 0.8), 0, 0.6, 0, g);
-      box(1.7, 2.1, 0.22, M('#22262a', 0.4, 0.6), 0, 1.9, 0.62, g); for (let k = 0; k < 5; k++) box(0.12, 2.1, 0.7, M('#22262a', 0.4, 0.6), -0.7 + k * 0.35, 1.9, 1.05, g);
+      box(1.7, 2.1, 0.22, M('#22262a', 0.4, 0.6), 0, 1.9, 0.62, g); for (let j = 0; j < 5; j++) box(0.12, 2.1, 0.7, M('#22262a', 0.4, 0.6), -0.7 + j * 0.35, 1.9, 1.05, g);
       box(1.0, 0.9, 0.45, black, 0, 1.4, 0.28, g); box(1.0, 0.65, 0.12, silver, 0, 2.15, 0.45, g);
-      [-0.25, 0, 0.25].forEach(x => box(0.08, 0.5, 0.08, silver, x, 0.82, 0.2, g));
-      [[-0.9, -0.9], [0.7, -0.9]].forEach(p => { const r = cyl(0.14, 0.62, M('#d8c59a', 0.6), p[0], 0.84, p[1], g, 8); r.rotation.z = Math.PI / 2; });
+      [-0.25, 0, 0.25].forEach(q => box(0.08, 0.5, 0.08, silver, q, 0.82, 0.2, g));
+      [[-0.9, -0.9], [0.7, -0.9]].forEach(q => { cyl(0.14, 0.62, M('#d8c59a', 0.6), q[0], 0.84, q[1], g, 8).rotation.z = Math.PI / 2; });
       box(0.6, 0.8, 1.0, greenT, -1.35, 1.05, 0.2, g); box(0.6, 0.8, 1.0, greenT, 1.35, 1.05, 0.2, g);
 
-      g = part(5.5, z, 'Relay, port ' + n, 'Isolates the port on a fault (GPIO' + rly + '). Opens and latches on overcurrent until an operator resets it.', () => closed(i) ? 'closed: port live' : P(i).fault ? 'OPEN, latched on fault' : 'open: no user');
+      g = part(x, 11, 'Relay, port ' + n, 'Isolates the port on a fault (GPIO' + rly + '). Opens and latches on overcurrent until an operator resets it.', () => closed(i) ? 'closed: port live' : P(i).fault ? 'OPEN, latched on fault' : 'open: no user', null, true);
       box(4.6, 0.16, 2.6, M('#b3272d', 0.5), 0, 0.6, 0, g); box(1.9, 1.55, 1.5, M('#1f5fbf', 0.35), 0.2, 1.45, 0.15, g);
       box(0.8, 0.9, 2.2, blueT, 1.85, 1.1, 0, g); box(0.5, 0.6, 1.2, black, -1.95, 0.98, 0, g); box(0.6, 0.3, 0.45, black, -1.2, 0.83, -0.7, g);
       const rled = box(0.24, 0.14, 0.14, glow(COL.crit, 0.1), -1.2, 0.76, 0.75, g);
 
-      g = part(13.5, z, 'Port ' + n + ' load (12 V LED bar)', 'Stands in for a charging vehicle. Its brightness is the power the controller has granted this port.', () => { const u = P(i).s; return (u ? u.token + ' ' + S.T[u.type].name + ', ' : 'no user, ') + amps(i).toFixed(2) + ' A'; });
-      box(6, 0.25, 1.3, M('#cfd4d6', 0.4, 0.5), 0, 0.3, 0, g); box(0.8, 0.9, 1.0, greenT, -3.4, 0.6, 0, g);
+      g = part(x, 17, 'Port ' + n + ' load (12 V LED bar)', 'Stands in for a charging vehicle. Its brightness is the power the controller has granted this port.', () => { const u = P(i).s; return (u ? u.token + ' ' + S.T[u.type].name + ', ' : 'no user, ') + amps(i).toFixed(2) + ' A'; });
+      box(6, 0.25, 1.3, M('#cfd4d6', 0.4, 0.5), 0, 0.3, 0, g); box(0.9, 0.9, 1.3, greenT, 3.5, 0.6, 0, g);
       const lm = new THREE.MeshStandardMaterial({ color: C('#6d6a5c').clone(), emissive: C('#ffe9a8').clone(), emissiveIntensity: 0, roughness: 0.4 });
-      for (let k = 0; k < 6; k++) box(0.5, 0.18, 0.5, lm, -2.25 + k * 0.9, 0.5, 0, g);
+      for (let j = 0; j < 6; j++) box(0.5, 0.18, 0.5, lm, -2.25 + j * 0.9, 0.5, 0, g);
 
-      tube(path([[-12.8, 0.8, z], [-9.6, 0.8, z]]), 0.22, W.red, sc); tube(path([[-6.4, 0.8, z], [-3.2, 0.8, z]]), 0.22, W.red, sc);
-      tube(path([[0.2, 0.8, z], [3.3, 0.8, z]]), 0.22, W.red, sc); tube(path([[7.7, 0.8, z], [10.2, 0.8, z]]), 0.22, W.red, sc);
-      tube(path([[16.5, 0.6, z + 0.9], [18.2, 0.6, z + 0.9]]), 0.2, W.blk, sc);
-      // control wires run in the gap beside each row
-      const zl = z - 3.3, xa = 20.9 - i * 0.55, ez = 1.5 + i * 1.3;
-      tube(path([[21.9, 1.3, ez], [xa, 0.3, ez], [xa, 0.3, zl], [-1.5, 0.3, zl], [-1.5, 0.65, z - 1.4]]), 0.12, W.blue, sc);
-      tube(path([[21.9, 1.3, ez + 0.5], [xa + 0.27, 0.3, ez + 0.5], [xa + 0.27, 0.3, zl + 0.4], [3.6, 0.3, zl + 0.4], [3.6, 0.9, z - 0.6]]), 0.12, W.org, sc);
-      tube(path([[-10.6, 0.3, z - 1.0], [-8.4, 0.9, z - 1.0]]), 0.11, W.grn, sc); tube(path([[-10.2, 0.3, z - 1.3], [-7.7, 0.9, z - 1.3]]), 0.11, W.yel, sc);
+      // power: down the left of the channel, rail -> sensor -> MOSFET -> relay -> load -> ground bar
+      run([[xp, 1.05, -7.8], [xp, 0.9, -3.75]], W.red, 0.22); run([[xp, 0.9, -0.35], [xp, 0.9, 2.75]], W.red, 0.22);
+      run([[xp, 0.9, 6.25], [xp, 0.9, 8.2], [x - 1, 0.9, 8.2], [x - 1, 0.9, 8.75]], W.red, 0.22);
+      run([[x, 1.0, 13.3], [x, 0.9, 14.7], [x + 3.5, 0.9, 14.7], [x + 3.5, 0.9, 16.3]], W.red, 0.22);
+      run([[x + 3.5, 0.8, 17.7], [x + 3.5, 0.75, 19.95]], W.blk, 0.22);
+      // control: straight lanes from the ESP32; the nearest channel takes the lane closest to its parts
+      const zp = 2.3 - k * 0.3, zr = 7.9 - k * 0.3;
+      run([[23.9, 1.05, zp], [23.2, 0.3, zp], [x + 0.9, 0.3, zp], [x + 0.9, 0.75, 2.95]], W.blue);
+      run([[23.9, 1.05, zr], [23.2, 0.3, zr], [x + 0.3, 0.3, zr], [x + 0.3, 0.3, 8.35], [x + 0.3, 1.0, 8.9]], W.org);
+      run([[x + 1.8, 0.3, -4.4], [x + 1.8, 0.3, -2.4], [x + 1.15, 1.3, -2.4]], W.grn, 0.11);
+      run([[x + 2.2, 0.3, -4.8], [x + 2.2, 0.3, -1.8], [x + 1.15, 1.3, -1.8]], W.yel, 0.11);
 
-      rows.push({ led: lm, rled: rled, label: new Label(6.4, sc, 13.5, 3.6, z), flow: new Flow(path([[-12.8, 0.8, z], [10.2, 0.8, z]]), COL.load, 9, 0.34, 9, sc) });
+      const chain = path([[xp, 1.0, -7.8], [xp, 0.95, 8.2], [x - 1, 0.95, 8.2], [x - 1, 0.95, 9.6], [x, 1.0, 12.6], [x, 0.95, 14.7], [x + 3.5, 0.95, 14.7], [x + 3.5, 0.95, 16.3]]);
+      rows.push({ led: lm, rled: rled, label: new Label(6.4, sc, x, 1.3, 23.6), flow: new Flow(chain, COL.load, 10, 0.34, 9, sc) });
     });
+    // the I2C bus: one pair of wires behind the sensors, tapped at each one
+    run([[23.9, 1.05, -1.6], [22.8, 0.3, -1.6], [22.8, 0.3, -4.4], [xs[0] + 1.8, 0.3, -4.4]], W.grn, 0.11);
+    run([[23.9, 1.05, -2], [23.2, 0.3, -2], [23.2, 0.3, -4.8], [xs[0] + 2.2, 0.3, -4.8]], W.yel, 0.11);
 
-    // ESP32 on a breadboard, LCD, alarm LED, queue button
-    g = part(24.5, 6, 'ESP32 DevKit V1', 'Runs the 1-second control loop: read sensors, work out the budget, share it, set PWM and relays, publish telemetry over Wi-Fi (MQTT).', () => !S.smart ? 'bypassed (unmanaged mode)' : S.now.limiter === 'none' ? 'all ports at full power' : 'sharing ' + S.now.budget.toFixed(2) + ' kW between ports');
+    /* ---- controller, right edge ---- */
+    g = part(26.5, 4, 'ESP32 DevKit V1', 'Runs the 1-second control loop: read sensors, work out the budget, share it, set PWM and relays, publish telemetry over Wi-Fi (MQTT).', () => !S.smart ? 'bypassed (unmanaged mode)' : S.now.limiter === 'none' ? 'all ports at full power' : 'sharing ' + S.now.budget.toFixed(2) + ' kW between ports');
     box(5.5, 0.9, 16.5, M('#f1efe8', 0.6), 0, 0.45, 0, g);
-    [-2.35, -1.95, 1.95, 2.35].forEach((x, k) => box(0.07, 0.02, 15.5, k % 2 ? W.blue : W.red, x, 0.91, 0, g));
+    [-2.35, -1.95, 1.95, 2.35].forEach((q, j) => box(0.07, 0.02, 15.5, j % 2 ? W.blue : W.red, q, 0.91, 0, g));
     box(2.8, 0.16, 5.2, M('#17191c', 0.6), 0, 1.5, 0, g);
-    [-1.15, 1.15].forEach(x => { box(0.25, 0.5, 4.7, black, x, 1.17, 0, g); for (let k = 0; k < 15; k++) box(0.11, 0.06, 0.11, gold, x, 1.61, -2.1 + k * 0.3, g); });
+    [-1.15, 1.15].forEach(q => { box(0.25, 0.5, 4.7, black, q, 1.17, 0, g); for (let j = 0; j < 15; j++) box(0.11, 0.06, 0.11, gold, q, 1.61, -2.1 + j * 0.3, g); });
     box(1.6, 0.3, 1.8, silver, 0, 1.73, -1.3, g); box(0.8, 0.28, 0.6, silver, 0, 1.72, 2.4, g);
     box(0.3, 0.18, 0.3, silver, -0.85, 1.67, 2.0, g); box(0.3, 0.18, 0.3, silver, 0.85, 1.67, 2.0, g);
     box(0.35, 0.16, 0.65, black, 0.5, 1.66, 0.9, g); box(0.5, 0.1, 0.5, black, -0.4, 1.63, 0.6, g);
     box(0.14, 0.08, 0.14, glow(COL.crit, 1.2), 0.75, 1.62, 0, g);
     const espLed = box(0.14, 0.08, 0.14, glow(COL.load, 0.1), -0.75, 1.62, 0, g);
 
-    g = part(23, -13, '20×4 LCD, I2C 0x27', 'The kiosk display on the bench: budget, each port’s share, queue length and waiting time.', null);
+    // The LCD's four I2C wires plug into a header on the board margin below the screen, not into the glass.
+    g = part(25.5, -15.5, '20×4 LCD, I2C 0x27', 'The kiosk display on the bench: budget, each port’s share, queue length and waiting time. Four wires: 5 V, ground, SDA, SCL.', null);
     box(0.6, 0.6, 3.4, black, -4.6, 0.3, -0.6, g); box(0.6, 0.6, 3.4, black, 4.6, 0.3, -0.6, g);
     const lt = new THREE.Group(); lt.position.set(0, 0.6, 0.6); lt.rotation.x = -0.38; g.add(lt);
     box(9.8, 6.0, 0.16, M('#1d6b3a', 0.6), 0, 3.0, 0, lt); box(9.7, 4.0, 0.8, M('#111315', 0.5), 0, 3.0, 0.45, lt);
     box(4, 1.8, 0.5, black, -2, 3.6, -0.33, lt);
+    box(1.5, 0.5, 0.36, black, -0.05, 0.5, 0.26, lt); for (let j = 0; j < 4; j++) box(0.09, 0.3, 0.09, gold, -0.5 + j * 0.3, 0.5, 0.5, lt);
     const lcd = new Screen(640, 240, '#1f48d8', '#e6eeff', 44);
     add(new THREE.Mesh(new THREE.PlaneGeometry(8.7, 3.25), new THREE.MeshBasicMaterial({ map: lcd.tex })), 0, 3.0, 0.86, lt);
+    g.updateMatrixWorld(true);
+    [W.red, W.blk, W.grn, W.yel].forEach((m, j) => {
+      const e = lt.localToWorld(new THREE.Vector3(-0.5 + j * 0.3, 0.5, 0.56));
+      run([[e.x, 1.05, -3.6], [e.x, 0.3, -4.9], [e.x, 0.3, e.z + 1.3], [e.x, e.y, e.z]], m, 0.11);
+    });
 
-    g = part(14.5, 15, 'Alarm LED (GPIO2)', 'Lights when the controller is sharing power because demand is above the budget.', () => S.smart && S.now.limiter !== 'none' ? 'ON: load sharing active' : 'off');
+    g = part(25.2, 17.5, 'Alarm LED (GPIO2)', 'Lights when the controller is sharing power because demand is above the budget.', () => S.smart && S.now.limiter !== 'none' ? 'ON: load sharing active' : 'off');
     const aled = cyl(0.26, 0.6, glow(COL.crit, 0.1), 0, 0.5, 0, g, 12);
     add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), aled.material), 0, 0.8, 0, g); cyl(0.34, 0.1, black, 0, 0.15, 0, g, 12);
+    run([[25.2, 1.05, 11.6], [25.2, 0.3, 12.9], [25.2, 0.3, 17.1]], W.org, 0.11);
 
-    g = part(9.5, 15, 'Queue button (GPIO13)', 'A waiting user presses this to take a token. Click it to add an e-scooter to the live queue.', () => S.queue.length + ' waiting now', () => { if (hooks.arrive) hooks.arrive('scoot'); });
+    g = part(28.4, 17.5, 'Queue button (GPIO13)', 'A waiting user presses this to take a token. Click it to add an e-scooter to the live queue.', () => S.queue.length + ' waiting now', () => { if (hooks.arrive) hooks.arrive('scoot'); });
     box(1.3, 0.7, 1.3, black, 0, 0.35, 0, g); const cap = cyl(0.42, 0.4, M('#d03b3b', 0.4), 0, 0.85, 0, g, 14);
+    g.userData.info.click = (fn => () => { cap.userData.down = 0.25; fn(); })(g.userData.info.click);
+    run([[28.4, 1.05, 11.6], [28.4, 0.3, 12.9], [28.4, 0.3, 16.8]], W.wht, 0.11);
 
-    // remaining wiring
-    const arc = (pts, r, m) => tube(path(pts, 0.5), r, m, sc);
-    const pvRun = path([[-27, 1.5, -10.4], [-31, 0.3, -10.4], [-31, 0.3, 7.4], [-25.5, 1.3, 7.9]]);     // panel to controller, along the board edge
-    tube(pvRun, 0.2, W.red, sc);
-    arc([[-21.5, 1.6, 8.2], [-18.6, 7.5, 4.5], [-17, 10.6, -2.5]], 0.2, W.red);
-    arc([[-24.5, 1.6, 8.2], [-27.2, 7.5, 4.5], [-28, 10.6, -2.5]], 0.2, W.blk);
-    const feed = path([[-17, 10.6, -2.5], [-15.1, 9, -4.6], [-13.8, 4.5, -6.6], [-13.5, 1.3, -7]], 0.5);
-    tube(feed, 0.22, W.red, sc);
-    const fa = feed.getPointAt(0.34), fb = feed.getPointAt(0.56);
-    bar([fa.x, fa.y, fa.z], [fb.x, fb.y, fb.z], 0.5, black, part(0, 0, '10 A fuse', 'Protects the battery wiring if anything downstream shorts.', null));
-    tube(path([[18.2, 0.6, -9.6], [18.2, 0.6, 18.4], [-31.4, 0.6, 18.4], [-31.4, 0.6, 1.2]]), 0.2, W.blk, sc);
-    arc([[-31.4, 0.6, 1.2], [-31.2, 7.5, -0.6], [-28, 10.6, -2.5]], 0.2, W.blk);
-    tube(path([[-13.5, 1.0, 13.2], [-13.5, 0.5, 16.3], [-8.3, 0.7, 16.3]]), 0.16, W.red, sc);
-    tube(path([[-3.7, 0.7, 16.3], [-2.6, 0.3, 17.2], [20.4, 0.3, 17.2], [20.4, 0.3, 13], [21.9, 1.3, 13]]), 0.12, W.red, sc);
-    tube(path([[21.9, 1.3, 9.6], [19.6, 0.3, 9.6], [19.6, 0.3, 17.7], [-10.6, 0.3, 17.7], [-10.6, 0.3, -11.6]]), 0.11, W.grn, sc);
-    tube(path([[21.9, 1.3, 10.1], [19.3, 0.3, 10.1], [19.3, 0.3, 18.0], [-10.2, 0.3, 18.0], [-10.2, 0.3, -11.9]]), 0.11, W.yel, sc);
-    tube(path([[9.5, 0.3, 15.8], [9.5, 0.3, 16.6], [19.9, 0.3, 16.6], [19.9, 0.3, 11.6], [21.9, 1.3, 11.6]]), 0.11, W.wht, sc);
-    tube(path([[14.5, 0.3, 15.5], [14.5, 0.3, 16.2], [20.15, 0.3, 16.2], [20.15, 0.3, 12.2], [21.9, 1.3, 12.2]]), 0.11, W.org, sc);
-    [W.red, W.blk, W.grn, W.yel].forEach((m, k) => arc([[23.6 + k * 0.4, 1.5, 3.2], [23.2 + k * 0.4, 4.2, -5], [21 + k * 0.4, 3.6, -13.4]], 0.11, m));
-
-    const pvFlow = new Flow(pvRun, COL.pv, 7, 0.34, 8, sc);
-    const feedFlow = new Flow(feed, COL.batt, 6, 0.36, 9, sc);
+    const pvFlow = new Flow(pvRun, COL.pv, 8, 0.34, 8, sc), feedFlow = new Flow(feed, COL.batt, 10, 0.36, 9, sc), backFlow = new Flow(backRun, COL.grid, 3, 0.34, 6, sc);
 
     function sync() {
       const N = S.now, f = i => { const p = S.ports[i]; return p && p.s ? p.set.toFixed(2) : p && p.fault ? 'FLT ' : '----'; };
@@ -618,14 +654,13 @@
       feedFlow.set(dt, [0, 1, 2, 3].reduce((s, i) => s + P(i).set, 0), 5);
       cap.position.y += ((cap.userData.down > 0 ? 0.7 : 0.85) - cap.position.y) * 0.4; cap.userData.down = (cap.userData.down || 0) - dt;
     }
-    g.userData.info.click = (fn => () => { cap.userData.down = 0.25; fn(); })(g.userData.info.click);
     return { sync: sync, tick: tick };
   }
 
   /* ---------- start-up and the frame loop ---------- */
   const SPEC = [
     { id: 's3', build: buildStation, pick: false, o: { fov: 38, near: 0.1, far: 600, cam: [14, 9, 30], target: [-4.5, 1.6, 1], min: 6, max: 90 } },
-    { id: 'b3', build: buildBench, pick: true, o: { fov: 35, near: 1, far: 800, cam: [3, 44, 52], target: [0, 1, 1.5], min: 16, max: 130 } }
+    { id: 'b3', build: buildBench, pick: true, o: { fov: 35, near: 1, far: 900, cam: [2, 56, 50], target: [0.5, 0, 1], min: 16, max: 150 } }
   ];
   function init() {
     SPEC.forEach(sp => {
