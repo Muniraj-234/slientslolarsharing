@@ -7,36 +7,37 @@
 </head>
 <body>
 <title>Silent Assassins 3D Charging Hub</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: a control-room console. A live status rail on top, tabbed work areas below; the plant is drawn in
+/* Theme: black-and-white chrome in one typeface family; colour is kept for power sources and alarm states only.
+   Layout: a control-room console. A live status rail on top, tabbed work areas below; the plant is drawn in
    grays and colour is kept for power flows and abnormal states, the way SCADA screens are built (ISA-101). */
 :root{
-  --bg:#edf0f1; --panel:#fbfcfc; --panel-2:#e3e8ea; --ink:#111a1e; --ink-2:#43515a; --muted:#5f6e76;
-  --line:#d3dadd; --line-2:#aebbc1; --accent:#1a5a78; --accent-ink:#ffffff; --accent-soft:#dbeaf1;
+  --bg:#f4f4f4; --panel:#ffffff; --panel-2:#ebebeb; --ink:#0a0a0a; --ink-2:#3d3d3d; --muted:#6b6b6b;
+  --line:#dcdcdc; --line-2:#b3b3b3; --accent:#0a0a0a; --accent-ink:#ffffff; --accent-soft:#e6e6e6;
   --s-load:#2a78d6; --s-pv:#eb6834; --s-batt:#1baf7a; --s-grid:#4a3aa7;
   --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --crit-soft:#fbe6e6;
-  --font-d:'Rajdhani','Segoe UI',system-ui,sans-serif;
-  --font-b:'Hind','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-d:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-b:'IBM Plex Sans','Segoe UI',system-ui,-apple-system,sans-serif;
   --font-m:'IBM Plex Mono',ui-monospace,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
-  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --bg:#0a0a0a; --panel:#141414; --panel-2:#1f1f1f; --ink:#f5f5f5; --ink-2:#c4c4c4; --muted:#8f8f8f;
+  --line:#2a2a2a; --line-2:#444444; --accent:#ffffff; --accent-ink:#0a0a0a; --accent-soft:#262626;
   --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark } }
 :root[data-theme="dark"]{
-  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
-  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --bg:#0a0a0a; --panel:#141414; --panel-2:#1f1f1f; --ink:#f5f5f5; --ink-2:#c4c4c4; --muted:#8f8f8f;
+  --line:#2a2a2a; --line-2:#444444; --accent:#ffffff; --accent-ink:#0a0a0a; --accent-soft:#262626;
   --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark }
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.5}
 .app{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:18px 48px;display:flex;flex-direction:column;gap:14px}
-h1,h2,h3{font-family:var(--font-d);font-weight:700;line-height:1.15;margin:0;text-wrap:balance}
-h1{font-size:30px;letter-spacing:.01em} h2{font-size:24px} h3{font-size:18px;font-weight:600}
+h1,h2,h3{font-family:var(--font-d);font-weight:600;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:25px;letter-spacing:-.02em} h2{font-size:21px} h3{font-size:16px}
 p{margin:0;max-width:68ch} a{color:var(--accent)}
 .num,.mono{font-family:var(--font-m);font-variant-numeric:tabular-nums}
-.eyebrow{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.eyebrow{font-family:var(--font-d);font-weight:600;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .note{color:var(--muted);font-size:13px}
 
 /* header + live rail */
@@ -45,14 +46,14 @@ p{margin:0;max-width:68ch} a{color:var(--accent)}
 .brand svg{flex:none} .brand p{color:var(--ink-2);font-size:14px}
 .rail{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:var(--panel);border:1px solid var(--line);padding:5px 10px;display:flex;flex-direction:column;min-width:86px}
-.chip span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-d);font-weight:600}
+.chip span{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-family:var(--font-d);font-weight:600}
 .chip b{font-family:var(--font-m);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
 .chip.wide{min-width:210px} .chip.wide b{font-family:var(--font-b);font-weight:500;font-size:14px}
 .chip[data-alert="1"]{border-color:var(--crit);background:var(--crit-soft)}
 
 .tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:2px solid var(--line-2);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
-.tabs button{font-family:var(--font-d);font-weight:600;font-size:16px;letter-spacing:.02em;padding:9px 16px;border:0;background:none;color:var(--ink-2);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button{font-family:var(--font-d);font-weight:500;font-size:14.5px;letter-spacing:0;padding:10px 16px;border:0;background:none;color:var(--ink-2);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .panel{background:var(--panel);border:1px solid var(--line);padding:16px;min-width:0}
@@ -72,7 +73,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);position:relative}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
-.field label,.lab{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-family:var(--font-d);font-weight:600}
+.field label,.lab{font-size:11px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-family:var(--font-d);font-weight:600}
 input[type=range]{width:100%;accent-color:var(--accent)}
 input[type=number],select{font-family:var(--font-m);font-size:14px;padding:6px 8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);width:100%}
 .check{display:flex;gap:8px;align-items:center;font-size:14px}
@@ -110,7 +111,7 @@ input[type=number],select{font-family:var(--font-m);font-size:14px;padding:6px 8
 .ports{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .port{border:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0;background:var(--bg)}
 .port-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.port-h b{font-family:var(--font-d);font-size:16px}
+.port-h b{font-family:var(--font-d);font-size:15px;font-weight:600}
 .port .tok{font-family:var(--font-m);font-size:13px}
 .port .ty{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar{height:8px;background:var(--panel-2);position:relative}
@@ -148,7 +149,7 @@ input[type=number],select{font-family:var(--font-m);font-size:14px;padding:6px 8
 .kpi b{font-family:var(--font-m);font-weight:500;font-size:21px;font-variant-numeric:tabular-nums}
 .kpi small{color:var(--muted);font-size:12px}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
-th{font-family:var(--font-d);font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+th{font-family:var(--font-d);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
 td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 td.num,th.num{text-align:right;font-family:var(--font-m);font-variant-numeric:tabular-nums}
 .sev{font-weight:600;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
@@ -193,7 +194,7 @@ pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(-
 <div class="app">
   <header class="top">
     <div class="brand">
-      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent)"/><circle cx="22" cy="16" r="6" fill="var(--s-pv)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent-ink)" stroke-width="2.5" fill="none"/></svg>
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent)"/><circle cx="22" cy="16" r="6" fill="var(--accent-ink)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent-ink)" stroke-width="2.5" fill="none"/></svg>
       <div><h1>Silent Assassins</h1><p>Intelligent load-sharing controller for solar charging stations · <a href="app.html" target="_blank" rel="noopener">Open the customer app</a></p></div>
     </div>
     <div class="rail" aria-live="off">
@@ -583,7 +584,7 @@ setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
 
 <script src="model.js?v=2"></script>
 <script src="station-link.js?v=2"></script>
-<script src="suryashare3d.js?v=7"></script>
+<script src="suryashare3d.js?v=8"></script>
 <script>
 (function () {
   'use strict';

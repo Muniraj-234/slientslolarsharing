@@ -8,7 +8,7 @@
     ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'vendor/three.min.js'],
     ['https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js', 'vendor/OrbitControls.js']
   ];
-  const COL = { pv: '#eb6834', batt: '#1baf7a', load: '#2a78d6', grid: '#9085e9', good: '#0ca30c', warn: '#fab219', serious: '#ec835a', crit: '#d03b3b', idle: '#7d8a90' };
+  const COL = { pv: '#eb6834', batt: '#1baf7a', load: '#2a78d6', grid: '#9085e9', good: '#0ca30c', warn: '#fab219', serious: '#ec835a', crit: '#d03b3b', idle: '#8a8a8a' };
   const LAMP = { free: COL.idle, full: COL.good, shared: COL.load, hold: COL.warn, trip: COL.warn, fault: COL.crit };
   const SL = { free: 'free', full: 'full power', shared: 'sharing', hold: 'on hold', trip: 'tripped', fault: 'isolated' };
 
@@ -77,11 +77,11 @@
     const key = a + '|' + b + '|' + hex; if (key === this.key) return; this.key = key;
     const g = this.cv.getContext('2d');
     g.clearRect(0, 0, 384, 96);
-    g.fillStyle = 'rgba(12,18,21,.88)'; g.fillRect(0, 0, 384, 96);
+    g.fillStyle = 'rgba(10,10,10,.9)'; g.fillRect(0, 0, 384, 96);
     g.fillStyle = hex || COL.idle; g.fillRect(0, 0, 10, 96);
-    g.textBaseline = 'middle'; g.fillStyle = '#f1f5f6';
+    g.textBaseline = 'middle'; g.fillStyle = '#f5f5f5';
     g.font = '600 ' + (b ? 32 : 50) + 'px "IBM Plex Mono", Consolas, monospace'; g.fillText(a, 24, b ? 30 : 50, 348);   // one-line tags get larger type
-    if (b) { g.fillStyle = '#bcc8cd'; g.font = '500 24px "IBM Plex Mono", Consolas, monospace'; g.fillText(b, 24, 70, 348); }
+    if (b) { g.fillStyle = '#c4c4c4'; g.font = '500 24px "IBM Plex Mono", Consolas, monospace'; g.fillText(b, 24, 70, 348); }
     this.tex.needsUpdate = true;
   };
 
@@ -247,8 +247,8 @@
     box(0.8, 1.3, 0.5, eq, XM, PAD + 0.65, -0.6, sc);
     for (let k = 0; k < 5; k++) box(0.05, 0.9, 0.3, dark, XM - 0.28 + k * 0.14, PAD + 0.75, -0.9, sc);
     const mpptLamp = box(0.16, 0.08, 0.02, glow(COL.idle, 1), XM, PAD + 1.1, -0.34, sc);
-    box(0.75, 1.6, 0.4, M('#1a5a78', 0.5), XC, PAD + 0.8, -0.6, sc);
-    const kiosk = new Screen(320, 224, '#0c1215', '#e9f4f8', 28);
+    box(0.75, 1.6, 0.4, M('#1c1f22', 0.5), XC, PAD + 0.8, -0.6, sc);
+    const kiosk = new Screen(320, 224, '#0a0a0a', '#f5f5f5', 28);
     add(new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.42), new THREE.MeshBasicMaterial({ map: kiosk.tex })), XC, PAD + 1.2, -0.395, sc);
     const beacon = cyl(0.09, 0.14, glow(COL.good, 1.3), XC, PAD + 1.67, -0.6, sc, 12);
 
@@ -281,7 +281,7 @@
     for (let i = 0; i < NP; i++) {
       const x = px(i), ly = i % 2 ? 4.2 : 5.2;          // signboards above the canopy, staggered so neighbours do not overlap
       const car = !!S.ports[i].car, ph = car ? 1.45 : 1.2;   // car bays: taller pedestal in the brand colour on a painted bay
-      box(0.34, ph, 0.24, car ? M('#1a5a78', 0.5) : eq, x, PAD + ph / 2, 0, sc);
+      box(0.34, ph, 0.24, car ? M('#1c1f22', 0.5) : eq, x, PAD + ph / 2, 0, sc);
       if (car) box(1.9, 0.012, 3.6, M('#86b3a2', 0.9), x, PAD + 0.004, 2.5, sc);
       box(0.1, 0.8, 0.02, dark, x, PAD + 0.65, 0.125, sc);
       const fg = new THREE.BoxGeometry(0.08, 0.8, 0.02); fg.translate(0, 0.4, 0);
@@ -486,7 +486,7 @@
     key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -48, right: 48, top: 38, bottom: -38, near: 10, far: 190 }); key.shadow.camera.updateProjectionMatrix(); key.shadow.bias = -0.0008;
     sc.add(key);
     const table = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ roughness: 1 })); table.rotation.x = -Math.PI / 2; table.position.y = -0.82; table.receiveShadow = true; sc.add(table);
-    const theme = () => { const c = new THREE.Color(css('--panel-2') || '#e3e8ea'); sc.background.copy(c); sc.fog.color.copy(c).convertSRGBToLinear(); table.material.color.copy(c).convertSRGBToLinear(); };
+    const theme = () => { const c = new THREE.Color(css('--panel-2') || '#ebebeb'); sc.background.copy(c); sc.fog.color.copy(c).convertSRGBToLinear(); table.material.color.copy(c).convertSRGBToLinear(); };
     theme();
     if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener ? mq.addEventListener.bind(mq, 'change') : mq.addListener.bind(mq))(theme); }
     box(72, 0.8, 47, M('#ddd8ca', 0.85), 0.5, -0.4, 0, sc);

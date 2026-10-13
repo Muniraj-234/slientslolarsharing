@@ -3,44 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1a5a78">
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
 <title>Silent Assassins Charge</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Customer app: one column sized for a phone held in one hand. Three screens behind a bottom bar:
+/* Theme: black-and-white chrome; colour is kept for power sources and status only.
+   Customer app: one column sized for a phone held in one hand. Three screens behind a bottom bar:
    what the station can give right now, booking an arrival slot, and the customer's own charge. */
 :root{
-  --bg:#edf0f1; --panel:#fbfcfc; --panel-2:#e3e8ea; --ink:#111a1e; --ink-2:#43515a; --muted:#5f6e76;
-  --line:#d3dadd; --line-2:#aebbc1; --accent:#1a5a78; --accent-ink:#ffffff; --accent-soft:#dbeaf1;
+  --bg:#f4f4f4; --panel:#ffffff; --panel-2:#ebebeb; --ink:#0a0a0a; --ink-2:#3d3d3d; --muted:#6b6b6b;
+  --line:#dcdcdc; --line-2:#b3b3b3; --accent:#0a0a0a; --accent-ink:#ffffff; --accent-soft:#e6e6e6;
   --s-load:#2a78d6; --s-pv:#eb6834; --s-batt:#1baf7a; --s-grid:#4a3aa7;
   --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --crit-soft:#fbe6e6;
-  --font-d:'Rajdhani','Segoe UI',system-ui,sans-serif;
-  --font-b:'Hind','Segoe UI',system-ui,-apple-system,sans-serif;
+  --top:#0a0a0a; --top-line:#0a0a0a;
+  --font-d:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-b:'IBM Plex Sans','Segoe UI',system-ui,-apple-system,sans-serif;
   --font-m:'IBM Plex Mono',ui-monospace,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
-  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
-  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark } }
+  --bg:#0a0a0a; --panel:#141414; --panel-2:#1f1f1f; --ink:#f5f5f5; --ink-2:#c4c4c4; --muted:#8f8f8f;
+  --line:#2a2a2a; --line-2:#444444; --accent:#ffffff; --accent-ink:#0a0a0a; --accent-soft:#262626;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; --top:#141414; --top-line:#2a2a2a; color-scheme:dark } }
 :root[data-theme="dark"]{
-  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
-  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
-  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark }
+  --bg:#0a0a0a; --panel:#141414; --panel-2:#1f1f1f; --ink:#f5f5f5; --ink-2:#c4c4c4; --muted:#8f8f8f;
+  --line:#2a2a2a; --line-2:#444444; --accent:#ffffff; --accent-ink:#0a0a0a; --accent-soft:#262626;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; --top:#141414; --top-line:#2a2a2a; color-scheme:dark }
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--panel-2);color:var(--ink);font-family:var(--font-b);font-size:16px;line-height:1.45}
 [hidden]{display:none!important}
 .app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column}
-h1,h2,h3{font-family:var(--font-d);font-weight:700;line-height:1.15;margin:0}
-h1{font-size:21px;letter-spacing:.01em} h2{font-size:20px} h3{font-size:17px;font-weight:600}
+h1,h2,h3{font-family:var(--font-d);font-weight:600;line-height:1.2;margin:0;letter-spacing:-.01em}
+h1{font-size:18px} h2{font-size:18px} h3{font-size:16px}
 p{margin:0} a{color:var(--accent)}
 .mono,.num{font-family:var(--font-m);font-variant-numeric:tabular-nums}
-.lab{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lab{font-family:var(--font-d);font-weight:600;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .note{color:var(--muted);font-size:14px}
 
 /* top bar */
-.top{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top{position:sticky;top:0;z-index:5;background:var(--top);color:#ffffff;border-bottom:1px solid var(--top-line);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;gap:10px;align-items:center;min-width:0}
 .brand svg{flex:none}
 .brand span{display:block;font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -89,7 +92,7 @@ button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{o
 .pc{border:1px solid var(--line);background:var(--bg);padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .pc[data-me="1"]{border:2px solid var(--accent)}
 .pc-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.pc-h b{font-family:var(--font-d);font-size:17px}
+.pc-h b{font-family:var(--font-d);font-size:15px;font-weight:600}
 .pc small{font-family:var(--font-m);font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .st{font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .st::before{content:"○";color:var(--muted)}
@@ -116,17 +119,17 @@ input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent)}
 .s-time span{font-size:12px;color:var(--muted)}
 .s-body{display:flex;flex-direction:column;gap:4px;min-width:0}
 .s-bar{height:8px;background:var(--panel-2)}
-.s-bar i{display:block;height:100%;background:var(--s-load);border-radius:0 3px 3px 0}
+.s-bar i{display:block;height:100%;background:var(--ink);border-radius:0 3px 3px 0}
 .s-meta{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink-2);white-space:nowrap}
 .s-est{font-size:14px;font-family:var(--font-m);font-variant-numeric:tabular-nums}
-.tag{font-family:var(--font-d);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:0 5px;margin-left:6px;white-space:nowrap}
-.daysep{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 0 0}
+.tag{font-family:var(--font-d);font-weight:600;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:0 5px;margin-left:6px;white-space:nowrap}
+.daysep{font-family:var(--font-d);font-weight:600;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:6px 0 0}
 
 /* my charge screen */
 .token{font-family:var(--font-m);font-size:30px;font-weight:500;letter-spacing:.04em}
 .prog{height:14px;background:var(--panel-2);position:relative}
-.prog i{position:absolute;inset:0 auto 0 0;background:var(--s-batt);border-radius:0 4px 4px 0;transition:width .4s}
-.prog em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-2)}
+.prog i{position:absolute;inset:0 auto 0 0;background:var(--ink);border-radius:0 4px 4px 0;transition:width .4s}
+.prog em{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--muted)}
 .pct{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:14px;color:var(--ink-2)}
 .blist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .blist li{border:1px solid var(--line);background:var(--bg);padding:12px;display:flex;flex-direction:column;gap:8px}
@@ -136,15 +139,15 @@ input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent)}
 .seg{display:flex}
 .seg button{flex:1;font-family:var(--font-b);font-size:15px;min-height:44px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-2);cursor:pointer;margin-right:-1px}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);position:relative}
-details summary{cursor:pointer;font-family:var(--font-d);font-weight:600;font-size:17px;min-height:28px}
+details summary{cursor:pointer;font-family:var(--font-d);font-weight:600;font-size:16px;min-height:28px}
 details[open] summary{margin-bottom:10px}
 details .in{display:flex;flex-direction:column;gap:10px}
 
 /* bottom bar */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;pointer-events:none}
 .nav div{pointer-events:auto;width:100%;max-width:480px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border-top:1px solid var(--line-2);padding-bottom:env(safe-area-inset-bottom,0px)}
-.nav button{font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.03em;min-height:60px;border:0;background:none;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-top:3px solid transparent;position:relative}
-.nav button[aria-current="page"]{color:var(--ink);border-top-color:var(--accent)}
+.nav button{font-family:var(--font-d);font-weight:500;font-size:12px;letter-spacing:.01em;min-height:60px;border:0;background:none;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-top:3px solid transparent;position:relative}
+.nav button[aria-current="page"]{color:var(--ink);font-weight:600;border-top-color:var(--accent)}
 .nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nav .dot{position:absolute;top:8px;left:calc(50% + 10px);width:9px;height:9px;border-radius:50%;background:var(--good)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:7;width:calc(100% - 32px);max-width:448px;background:var(--ink);color:var(--bg);padding:12px 14px;font-size:15px}
@@ -154,7 +157,7 @@ details .in{display:flex;flex-direction:column;gap:10px}
 <div class="app">
   <header class="top">
     <div class="brand">
-      <svg width="36" height="36" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent-ink)"/><circle cx="22" cy="16" r="6" fill="var(--s-pv)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent)" stroke-width="2.5" fill="none"/></svg>
+      <svg width="36" height="36" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="#ffffff"/><circle cx="22" cy="16" r="6" fill="#0a0a0a"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="#0a0a0a" stroke-width="2.5" fill="none"/></svg>
       <div style="min-width:0"><h1>Silent Assassins</h1><span>Solar charging hub</span></div>
     </div>
     <div class="clock"><b id="clock">--:--</b><span>station time</span></div>
