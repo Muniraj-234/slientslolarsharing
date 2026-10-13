@@ -1,0 +1,1332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Silent Assistant 3D Charging Hub</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+/* Layout: a control-room console. A live status rail on top, tabbed work areas below; the plant is drawn in
+   grays and colour is kept for power flows and abnormal states, the way SCADA screens are built (ISA-101). */
+:root{
+  --bg:#edf0f1; --panel:#fbfcfc; --panel-2:#e3e8ea; --ink:#111a1e; --ink-2:#43515a; --muted:#5f6e76;
+  --line:#d3dadd; --line-2:#aebbc1; --accent:#1a5a78; --accent-ink:#ffffff; --accent-soft:#dbeaf1;
+  --s-load:#2a78d6; --s-pv:#eb6834; --s-batt:#1baf7a; --s-grid:#4a3aa7;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --crit-soft:#fbe6e6;
+  --font-d:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-b:'Hind','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
+  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
+  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.5}
+.app{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:18px 48px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--font-d);font-weight:700;line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:30px;letter-spacing:.01em} h2{font-size:24px} h3{font-size:18px;font-weight:600}
+p{margin:0;max-width:68ch} a{color:var(--accent)}
+.num,.mono{font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.note{color:var(--muted);font-size:13px}
+
+/* header + live rail */
+.top{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.brand svg{flex:none} .brand p{color:var(--ink-2);font-size:14px}
+.rail{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel);border:1px solid var(--line);padding:5px 10px;display:flex;flex-direction:column;min-width:86px}
+.chip span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-d);font-weight:600}
+.chip b{font-family:var(--font-m);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+.chip.wide{min-width:210px} .chip.wide b{font-family:var(--font-b);font-weight:500;font-size:14px}
+.chip[data-alert="1"]{border-color:var(--crit);background:var(--crit-soft)}
+
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:2px solid var(--line-2);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+.tabs button{font-family:var(--font-d);font-weight:600;font-size:16px;letter-spacing:.02em;padding:9px 16px;border:0;background:none;color:var(--ink-2);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.panel{background:var(--panel);border:1px solid var(--line);padding:16px;min-width:0}
+.panel > h3{margin-bottom:10px}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.scroll-x{overflow-x:auto}
+
+/* controls */
+.btn{font-family:var(--font-b);font-size:14px;font-weight:500;padding:7px 12px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{background:var(--panel-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:3px 8px;font-size:12px}
+.btn[aria-pressed="true"]{background:var(--crit-soft);border-color:var(--crit)}
+.seg{display:inline-flex;flex-wrap:wrap}
+.seg button{font-family:var(--font-b);font-size:13px;padding:6px 10px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-2);cursor:pointer;margin-right:-1px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);position:relative}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.lab{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-family:var(--font-d);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number],select{font-family:var(--font-m);font-size:14px;padding:6px 8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);width:100%}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+
+/* simulation layout */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+.sim .ctl{grid-column:1/-1}
+.ctl-in{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px 24px}
+@media (max-width:760px){.sim{grid-template-columns:minmax(0,1fr)}}
+.ctl-in > div{display:flex;flex-direction:column;gap:8px;min-width:0}
+
+/* circuit */
+.circuit svg{display:block;width:100%;min-width:920px;height:auto;font-family:var(--font-b)}
+.c-box{fill:var(--panel-2);stroke:var(--line-2);stroke-width:1.2}
+.c-wire{stroke:var(--line-2);stroke-width:2;fill:none}
+.c-bus{stroke:var(--ink-2);stroke-width:5;fill:none}
+.c-sig{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 4;fill:none}
+.c-t{fill:var(--ink);font-size:12px;font-weight:600}
+.c-s{fill:var(--muted);font-size:10.5px}
+.c-v{fill:var(--ink);font-family:var(--font-m);font-size:12px}
+.c-flow{stroke-width:3;fill:none;stroke-dasharray:5 7;animation:dash 1s linear infinite;opacity:0}
+.c-flow.pv{stroke:var(--s-pv)} .c-flow.batt{stroke:var(--s-batt)} .c-flow.load{stroke:var(--s-load)} .c-flow.grid{stroke:var(--s-grid)}
+@keyframes dash{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion:reduce){.c-flow{animation:none}}
+.branch[data-state="hold"] .c-conv,.branch[data-state="trip"] .c-conv{stroke:var(--warn);stroke-width:2}
+.branch[data-state="fault"] .c-conv,.branch[data-state="fault"] .c-ldbox{stroke:var(--crit);stroke-width:2}
+.branch[data-state="free"] .c-ldbox{stroke-dasharray:4 4;fill:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink-2)}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
+.legend i.dashd{background:none;border-top:2px dashed var(--ink-2);height:0}
+
+/* kiosk */
+.kiosk{border:2px solid var(--line-2)}
+.kiosk-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.ports{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.port{border:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0;background:var(--bg)}
+.port-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.port-h b{font-family:var(--font-d);font-size:16px}
+.port .tok{font-family:var(--font-m);font-size:13px}
+.port .ty{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:8px;background:var(--panel-2);position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--s-load);border-radius:0 3px 3px 0}
+.bar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-2)}
+.port .n{font-family:var(--font-m);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;gap:4px;flex-wrap:wrap}
+.state{font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.state::before{content:"●";font-size:10px;color:var(--muted)}
+.port[data-state="full"] .state::before{color:var(--good)}
+.port[data-state="shared"] .state::before{content:"◐";color:var(--s-load);font-size:12px}
+.port[data-state="hold"] .state::before,.port[data-state="trip"] .state::before{content:"▲";color:var(--warn)}
+.port[data-state="fault"] .state::before{content:"■";color:var(--crit)}
+.port[data-state="fault"]{border-color:var(--crit)}
+.port[data-state="free"]{border-style:dashed}
+.queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.queue li{display:grid;grid-template-columns:20px 54px minmax(0,1fr) auto auto;gap:6px;align-items:center;font-size:13px;padding:5px 6px;background:var(--bg);border:1px solid var(--line)}
+.queue .w{font-family:var(--font-m);font-size:12.5px;white-space:nowrap}
+.queue .ty{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+.queue li.empty{display:block;border:0;background:none;color:var(--muted);padding:6px 0}
+
+/* charts */
+.chart{position:relative}
+.chart svg{display:block;width:100%;font-family:var(--font-b)}
+.chart .grid{stroke:var(--line);stroke-width:1} .chart .axis{stroke:var(--line-2);stroke-width:1}
+.chart text{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.chart text.end{fill:var(--ink-2);font-size:11.5px}
+.chart path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .cross{stroke:var(--ink-2);stroke-width:1;stroke-dasharray:2 3}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line-2);padding:6px 8px;font-size:12px;font-family:var(--font-m);white-space:nowrap;z-index:3}
+.tip i{display:inline-block;width:10px;height:3px;margin-right:6px;vertical-align:middle}
+
+/* SCADA */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px}
+.kpi{background:var(--panel);border:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-family:var(--font-m);font-weight:500;font-size:21px;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--muted);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-family:var(--font-d);font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.sev{font-weight:600;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.sev::before{font-size:12px}
+.sev.info::before{content:"●";color:var(--s-load)} .sev.warn::before{content:"▲";color:var(--warn)}
+.sev.serious::before{content:"◆";color:var(--serious)} .sev.crit::before{content:"■";color:var(--crit)}
+tr.cleared td{color:var(--muted)} tr.cleared .sev::before{content:"✓";color:var(--good)}
+tr.unack td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
+.alarms td:nth-child(4){font-weight:600;min-width:170px} .alarms td:nth-child(5),.alarms td:nth-child(6){min-width:230px}
+.log{list-style:none;margin:0;padding:0;font-size:13px;max-height:300px;overflow-y:auto}
+.log li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
+.log time{font-family:var(--font-m);color:var(--muted)}
+.log li[data-k="alarm"] span{font-weight:600}
+
+/* prose */
+.prose{display:flex;flex-direction:column;gap:10px}
+.prose ul,.prose ol{margin:0;padding-left:20px;max-width:70ch;display:flex;flex-direction:column;gap:6px}
+.lead{font-size:17px;color:var(--ink-2)}
+.asks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.asks > div{background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:6px}
+.asks p{font-size:14px;color:var(--ink-2)}
+.better{color:var(--good);font-weight:600}
+pre{font-family:var(--font-m);font-size:12.5px;line-height:1.55;background:var(--panel-2);padding:12px;margin:0;overflow-x:auto}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.hw svg{display:block;width:100%;min-width:720px;height:auto;font-family:var(--font-b)}
+
+/* 3D views */
+.v3d-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.v3d-h h3{margin:0}
+.v3d-host{position:relative;height:clamp(320px,58vh,540px);background:var(--panel-2);border:1px solid var(--line);overflow:hidden}
+.v3d-host canvas{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+.v3d-host canvas:active{cursor:grabbing}
+.v3d-msg{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+.v3d-host .tip{white-space:normal;width:max-content;max-width:270px;font-family:var(--font-b);font-size:13px;line-height:1.4}
+.v3d-host .tip b{display:block;font-family:var(--font-d);font-size:15px}
+.v3d-host .tip span{display:block;margin-top:4px;font-family:var(--font-m);font-size:12px;color:var(--ink-2)}
+.btn.toggle[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.legend i.dot{width:10px;height:10px;border-radius:50%}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent)"/><circle cx="22" cy="16" r="6" fill="var(--s-pv)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent-ink)" stroke-width="2.5" fill="none"/></svg>
+      <div><h1>Silent Assistant</h1><p>Intelligent load-sharing controller for solar charging stations</p></div>
+    </div>
+    <div class="rail" aria-live="off">
+      <div class="chip"><span>Station time</span><b id="r-time">--:--</b></div>
+      <div class="chip"><span>Solar</span><b id="r-pv">0.00 kW</b></div>
+      <div class="chip"><span>Charging</span><b id="r-load">0.00 kW</b></div>
+      <div class="chip"><span>Available</span><b id="r-bud">0.00 kW</b></div>
+      <div class="chip"><span>Battery</span><b id="r-soc">0%</b></div>
+      <div class="chip"><span>Backup</span><b id="r-grid">standby</b></div>
+      <div class="chip wide" id="r-modechip"><span>Controller</span><b id="r-mode">Starting</b></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-problem" data-tab="problem" aria-selected="false">Problem and solution</button>
+    <button role="tab" id="t-sim" data-tab="sim" aria-selected="true">Live simulation</button>
+    <button role="tab" id="t-scada" data-tab="scada" aria-selected="false">SCADA</button>
+    <button role="tab" id="t-hw" data-tab="hw" aria-selected="false">Circuit and hardware</button>
+    <button role="tab" id="t-biz" data-tab="biz" aria-selected="false">Business and schemes</button>
+  </nav>
+
+  <!-- PROBLEM -->
+  <section id="p-problem" role="tabpanel" aria-labelledby="t-problem" hidden>
+    <div class="stack">
+      <div class="panel prose">
+        <span class="eyebrow">The problem</span>
+        <h2>A solar charging station has a ceiling that moves with the sun. Its users do not.</h2>
+        <p class="lead">A 10 kWp array gives about 8 kW at noon, less under cloud and nothing after sunset. Ten e-rickshaws and scooters plugged in together ask for more than 10 kW.</p>
+        <ul>
+          <li><b>The station trips.</b> With nothing limiting the load, the converter or battery protection cuts out and every vehicle stops charging until someone unplugs.</li>
+          <li><b>The first to arrive takes everything.</b> Whoever plugs in early charges at full power; the driver who arrives sixth gets a trip or nothing.</li>
+          <li><b>Nobody can plan.</b> A driver who earns by the trip cannot tell whether the wait is ten minutes or two hours.</li>
+          <li><b>Owners overspend.</b> The usual fix is to oversize panels, battery and converter for a peak that lasts an hour, or to install fewer sockets and turn customers away.</li>
+        </ul>
+      </div>
+
+      <div class="panel prose">
+        <span class="eyebrow">The solution</span>
+        <h2>One controller that treats power as a budget and shares it every second</h2>
+        <p>Silent Assistant sits between the DC bus and the charging ports. It measures what the sun and battery can give, asks each port what its vehicle can take, and sets every port's charging power so the total never exceeds the supply.</p>
+      </div>
+      <div class="asks">
+        <div><h3>Allocates fairly</h3><p>Max-min sharing with a guaranteed minimum. Small loads get what they need, large loads split the rest equally, priority users (ambulance e-rickshaw, health worker) count double. If power cannot cover every minimum, the least-charged vehicles go first and the order rotates every 10 minutes.</p></div>
+        <div><h3>Enforces limits</h3><p>Per-port cap of 1.5 kW, converter rating of 10 kW, backup feed rating of 3 kW, battery reserve floor at 20%, thermal derating at 70 °C, and a relay that opens when a port draws more than it was told to. While others wait, each session is capped at 3 kWh or 80% charge.</p></div>
+        <div><h3>Adapts when users join or leave</h3><p>The share is recalculated every control cycle and at once on plug-in, unplug, cloud or fault. Cuts are immediate so the limit is never crossed; increases ramp at 0.5 kW per minute so the bus stays stable.</p></div>
+        <div><h3>Shows status and waiting time</h3><p>A kiosk screen shows each port's power, charge level and time left. People in the queue see an estimated wait worked out from the energy still owed to the vehicles ahead of them and the power they are receiving.</p></div>
+        <div><h3>Keeps running on backup power</h3><p>When the battery falls to 30% the controller brings in a 3 kW grid backup feed, adds it to the power budget and shares it like any other source. Solar is always used first, the backup never charges the battery, and it is released when the battery recovers to 45%. If the grid is out, the station carries on with sun and battery alone.</p></div>
+      </div>
+
+      <div class="panel">
+        <h3>Same sun, same customers: unmanaged station against Silent Assistant</h3>
+        <p class="note" style="margin-bottom:10px">Average of 20 simulated days with identical arrivals and weather in both columns, run in your browser by the same model that drives the live tab. Station: 10 kWp PV, 20 kWh battery, 10 kW converter, 3 kW grid backup, 10 ports.</p>
+        <div class="scroll-x"><table id="cmp"><thead><tr><th>Per day</th><th class="num">Unmanaged</th><th class="num">Silent Assistant</th><th>What it means</th></tr></thead><tbody></tbody></table></div>
+        <p id="cmp-say" style="margin-top:12px"></p>
+        <p class="note" style="margin-top:6px">The controller does not create energy: both stations sell about the same number of units because the sun and the backup feed set the total. What changes is that the station stops tripping, the wait becomes short and predictable, and the energy is shared.</p>
+      </div>
+
+      <div class="panel prose">
+        <h3>Where it sells</h3>
+        <ul>
+          <li><b>E-rickshaw stands and last-mile hubs</b> in towns where the grid connection is weak or expensive to upgrade.</li>
+          <li><b>Panchayat and self-help-group charging kiosks</b> for e-cycles, scooters and phones.</li>
+          <li><b>Campuses, factories and housing societies</b> adding shared EV charging to an existing rooftop solar plant.</li>
+          <li><b>Delivery fleet depots and highway dhabas</b> that want more sockets than their solar plant can feed at once.</li>
+          <li><b>Retrofit:</b> existing solar charging stations add the controller instead of more panels.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMULATION -->
+  <section id="p-sim" role="tabpanel" aria-labelledby="t-sim">
+    <div class="sim">
+      <div class="panel ctl">
+        <div class="ctl-in">
+          <div>
+            <span class="lab">Controller</span>
+            <div class="seg" id="mode"><button data-v="1" aria-pressed="true">Silent Assistant on</button><button data-v="0" aria-pressed="false">Unmanaged</button></div>
+            <span class="note">Switch to Unmanaged to watch the same station trip.</span>
+            <span class="lab">Backup feed (grid, 3 kW)</span>
+            <div class="seg" id="bk"><button data-v="1" aria-pressed="true">Automatic</button><button data-v="0" aria-pressed="false">Switched off</button></div>
+            <span class="note">Comes in when the battery falls to 30%.</span>
+          </div>
+          <div>
+            <span class="lab">Clock</span>
+            <div class="row"><button class="btn primary" id="run">Pause</button>
+              <div class="seg" id="speed"><button data-v="1" aria-pressed="false">1×</button><button data-v="4" aria-pressed="true">4×</button><button data-v="15" aria-pressed="false">15×</button><button data-v="45" aria-pressed="false">45×</button></div></div>
+            <span class="note">1× is one simulated minute per second.</span>
+            <div class="field"><label for="tod">Time of day <span class="mono" id="tod-v"></span></label><input type="range" id="tod" min="0" max="1435" step="5"></div>
+            <div class="field"><label for="cloud">Cloud cover <span class="mono" id="cloud-v"></span></label><input type="range" id="cloud" min="0" max="100" step="5"></div>
+          </div>
+          <div>
+            <span class="lab">A vehicle arrives</span>
+            <div class="row" id="add">
+              <button class="btn" data-type="rick">E-rickshaw</button><button class="btn" data-type="scoot">E-scooter</button>
+              <button class="btn" data-type="cycle">E-cycle</button><button class="btn" data-type="phone">Phone locker</button>
+            </div>
+            <label class="check"><input type="checkbox" id="prio"> Next arrival is priority</label>
+            <label class="check"><input type="checkbox" id="auto" checked> Random arrivals through the day</label>
+          </div>
+          <div>
+            <span class="lab">Scenarios</span>
+            <div class="row">
+              <button class="btn" id="sc-rush">Morning rush</button><button class="btn" id="sc-cloud">Cloud passes over</button>
+              <button class="btn" id="sc-eve">Evening, low battery</button><button class="btn" id="sc-reset">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="v3d-h"><h3>Station in 3D, live</h3>
+            <div class="row"><button class="btn small toggle" id="s3-orbit" aria-pressed="false">Auto-orbit</button><button class="btn small" id="s3-reset">Reset view</button></div></div>
+          <div class="v3d-host" id="s3" role="img" aria-label="3D model of the station: a solar canopy over ten charging pedestals, with the controller, converter, battery bank and grid backup cabinets on the left and waiting vehicles in the lane in front. The kiosk panel and circuit below carry the same data as text.">
+            <div class="v3d-msg">Loading the 3D view…</div>
+          </div>
+          <div class="legend" style="margin-top:8px">
+            <span><i style="background:var(--s-pv)"></i>Solar power</span><span><i style="background:var(--s-batt)"></i>Battery power</span><span><i style="background:var(--s-grid)"></i>Backup power</span><span><i style="background:var(--s-load)"></i>Power to vehicles</span>
+            <span><i class="dot" style="background:var(--good)"></i>Lamp: full power</span><span><i class="dot" style="background:var(--s-load)"></i>sharing</span><span><i class="dot" style="background:var(--warn)"></i>on hold, blinking</span><span><i class="dot" style="background:var(--crit)"></i>isolated or tripped</span>
+          </div>
+          <p class="note" style="margin-top:6px">Drag to orbit, right-drag to pan, click the view then scroll to zoom. The sun, sky and shadows follow the station clock; vehicles drive in, wait in the lane and plug in as the controller admits them.</p>
+        </div>
+        <div class="panel circuit">
+          <h3>Station circuit, live</h3>
+          <div class="scroll-x" id="circuit"></div>
+          <div class="legend" style="margin-top:8px">
+            <span><i style="background:var(--s-pv)"></i>Solar power</span><span><i style="background:var(--s-batt)"></i>Battery power</span><span><i style="background:var(--s-grid)"></i>Backup power</span>
+            <span><i style="background:var(--s-load)"></i>Power to vehicles</span><span><i class="dashd"></i>Sensing and control signals</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Power over the day (kW)</h3>
+          <div class="legend" style="margin-bottom:6px"><span><i style="background:var(--s-pv)"></i>Solar</span><span><i style="background:var(--s-load)"></i>Charging load</span><span><i style="background:var(--s-grid)"></i>Backup feed</span><span><i class="dashd"></i>Available budget</span></div>
+          <div class="chart" id="ch-power"></div>
+        </div>
+      </div>
+
+      <div class="panel kiosk">
+        <div class="kiosk-h"><h3>Kiosk display</h3><span class="note">what drivers see</span></div>
+        <div class="ports" id="ports"></div>
+        <div class="kiosk-h" style="margin-top:14px"><h3>Queue</h3><span class="note" id="q-note"></span></div>
+        <ol class="queue" id="queue"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCADA -->
+  <section id="p-scada" role="tabpanel" aria-labelledby="t-scada" hidden>
+    <div class="stack">
+      <div class="kpis" id="kpis"></div>
+      <div class="panel">
+        <h3>Alarms: problem identified, cause, action taken</h3>
+        <div class="scroll-x"><table class="alarms"><thead><tr><th>Severity</th><th>Time</th><th>Tag</th><th>Problem identified</th><th>Probable cause</th><th>Automatic action</th><th>State</th></tr></thead><tbody id="alarms"></tbody></table></div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h3>Inject a fault</h3>
+          <p class="note" style="margin-bottom:10px">Each button creates a field problem. Watch the alarm table name it and the controller respond.</p>
+          <div class="row" style="margin-bottom:10px">
+            <button class="btn" id="f-pv" aria-pressed="false">PV string failure</button>
+            <button class="btn" id="f-fan" aria-pressed="false">Cooling fan failure</button>
+            <button class="btn" id="f-bms" aria-pressed="false">Battery BMS fault</button>
+            <button class="btn" id="f-grid" aria-pressed="false">Grid outage</button>
+          </div>
+          <div class="row">
+            <div class="field" style="width:110px"><label for="f-port">Port</label><select id="f-port"></select></div>
+            <button class="btn" id="f-oc" style="align-self:flex-end">Overcurrent on port</button>
+            <button class="btn" id="f-comms" style="align-self:flex-end">Sensor loss on port</button>
+            <button class="btn" id="f-clear" style="align-self:flex-end">Clear all faults</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Event log</h3>
+          <ul class="log" id="log"></ul>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Ports</h3>
+        <div class="scroll-x"><table><thead><tr><th>Port</th><th>Vehicle</th><th>State</th><th class="num">Wants kW</th><th class="num">Setpoint kW</th><th class="num">Measured kW</th><th>Relay</th><th></th></tr></thead><tbody id="ptable"></tbody></table></div>
+      </div>
+      <div class="panel">
+        <h3>Battery charge (%)</h3>
+        <div class="chart" id="ch-soc"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HARDWARE -->
+  <section id="p-hw" role="tabpanel" aria-labelledby="t-hw" hidden>
+    <div class="stack">
+      <div class="grid2">
+        <div class="panel prose">
+          <h3>Control loop, once per second</h3>
+          <ol>
+            <li>Read PV power, bus voltage, battery charge and converter temperature.</li>
+            <li>Work out the budget: the smaller of the converter rating and (solar power + what the battery may give at its present charge + the backup feed when it is engaged).</li>
+            <li>Switch the backup feed: on when the battery is at or below 30%, off again at 45%.</li>
+            <li>Read each port: is a vehicle plugged in, how much can it accept, what current is it drawing.</li>
+            <li>Open the relay on any port drawing more than 120% of its setpoint.</li>
+            <li>Share the budget with the rule on the right.</li>
+            <li>Apply setpoints: cut at once, raise by at most 0.5 kW per minute.</li>
+            <li>Send surplus solar to the battery; update the kiosk, the waiting times and the SCADA telemetry.</li>
+          </ol>
+        </div>
+        <div class="panel prose">
+          <h3>The sharing rule</h3>
+<pre>// items in admission order: {demand, min, weight}
+admit items while their minimums fit in the budget
+if (sum of demands &lt;= budget) give everyone full demand
+else find level k by bisection so that
+  sum( clamp(k * weight, min, demand) ) == budget
+setpoint[i] = clamp(k * weight[i], min[i], demand[i])</pre>
+          <p class="note">Example with 4.0 kW for four e-rickshaws, an e-cycle and a phone locker: the cycle gets its full 0.30, the locker its 0.12, and the rickshaws 0.895 kW each. The same function runs in this page (JavaScript) and in the ESP32 firmware (C++).</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="v3d-h"><h3>Bench prototype in 3D (4 ports, 12 V)</h3>
+          <div class="row"><button class="btn small toggle" id="b3-orbit" aria-pressed="false">Auto-orbit</button><button class="btn small" id="b3-reset">Reset view</button></div></div>
+        <div class="v3d-host" id="b3" role="img" aria-label="3D model of the bench prototype: solar panel, charge controller and battery on the left; four channels each with an INA219 current sensor, MOSFET, relay and LED load; an ESP32 on a breadboard and a 20 by 4 LCD on the right. The wiring diagram below carries the same connections.">
+          <div class="v3d-msg">Loading the 3D view…</div>
+          <div class="tip" hidden></div>
+        </div>
+        <div class="legend" style="margin-top:8px">
+          <span><i style="background:#c8322f"></i>12 V power</span><span><i style="background:#17191b"></i>Ground</span><span><i style="background:#2f6fd0"></i>PWM to MOSFET</span><span><i style="background:#e07b26"></i>Relay control</span><span><i style="background:#2c9d57"></i>I2C SDA</span><span><i style="background:#d8b22a"></i>I2C SCL</span><span><i style="background:#7a55c7"></i>Backup relay control</span>
+        </div>
+        <p class="note" style="margin-top:6px">Hover a part to see what it does and its live reading. Click the red push button to add a waiting user. The bench mirrors ports 1 to 4 of the live station: 1 kW there is shown as 1 A here, LED brightness is the granted power, and the LCD shows what the firmware prints. The mains adapter and changeover relay at the front left are the backup feed.</p>
+      </div>
+
+      <div class="panel hw">
+        <h3>Bench prototype wiring (4 ports, 12 V)</h3>
+        <div class="scroll-x">
+        <svg viewBox="0 0 780 400" role="img" aria-label="Prototype wiring: solar panel, charge controller and battery feed a 12 volt rail; four port channels each have a current sensor, MOSFET and relay controlled by an ESP32">
+          <g>
+            <rect class="c-box" x="14" y="24" width="132" height="50"/><text class="c-t" x="24" y="45">Solar panel</text><text class="c-s" x="24" y="61">12 V, 20 W</text>
+            <rect class="c-box" x="14" y="112" width="132" height="50"/><text class="c-t" x="24" y="133">Charge controller</text><text class="c-s" x="24" y="149">PWM or MPPT, 10 A</text>
+            <rect class="c-box" x="14" y="200" width="132" height="50"/><text class="c-t" x="24" y="221">Battery</text><text class="c-s" x="24" y="237">12 V, 7 Ah + 10 A fuse</text>
+            <rect class="c-box" x="14" y="300" width="132" height="50"/><text class="c-t" x="24" y="321">Buck converter</text><text class="c-s" x="24" y="337">12 V to 5 V for ESP32</text>
+            <path class="c-wire" d="M80 74V112M80 162V200M146 137H186M186 40V325M146 325H186"/>
+            <text class="c-s" x="192" y="34">12 V load rail</text>
+          </g>
+          <g id="hw-rows"></g>
+          <rect class="c-box" x="630" y="40" width="136" height="330"/>
+          <text class="c-t" x="642" y="62">ESP32 DevKit</text>
+          <text class="c-s" x="642" y="84">I2C: GPIO21 SDA, 22 SCL</text>
+          <text class="c-s" x="642" y="100">PWM: GPIO25 26 27 14</text>
+          <text class="c-s" x="642" y="116">Relays: GPIO32 33 16 17</text>
+          <text class="c-s" x="642" y="132">Plug detect: 4 18 19 23</text>
+          <text class="c-s" x="642" y="148">PV volts: GPIO34 (ADC)</text>
+          <text class="c-s" x="642" y="164">Battery volts: GPIO35</text>
+          <text class="c-s" x="642" y="180">Queue button: GPIO13</text>
+          <text class="c-s" x="642" y="196">Alarm LED: GPIO2</text>
+          <rect class="c-box" x="642" y="230" width="112" height="46" style="fill:var(--panel)"/><text class="c-t" x="650" y="250">20×4 LCD</text><text class="c-s" x="650" y="266">I2C 0x27, kiosk</text>
+          <rect class="c-box" x="642" y="296" width="112" height="46" style="fill:var(--panel)"/><text class="c-t" x="650" y="316">Wi-Fi, MQTT</text><text class="c-s" x="650" y="332">to cloud SCADA</text>
+        </svg>
+        </div>
+        <p class="note" style="margin-top:8px">Each channel: INA219 measures current, a logic-level MOSFET (IRLZ44N, 220 Ω gate resistor, 10 kΩ pull-down) sets power by PWM, a relay isolates the port on a fault. The commercial unit replaces the MOSFET with a CC/CV DC-DC charger module that takes a current setpoint over CAN.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="panel">
+          <h3>Prototype bill of materials</h3>
+          <div class="scroll-x"><table><thead><tr><th>Part</th><th class="num">Qty</th><th class="num">Approx. ₹</th></tr></thead><tbody>
+            <tr><td>ESP32 DevKit V1</td><td class="num">1</td><td class="num">450</td></tr>
+            <tr><td>INA219 current sensor module</td><td class="num">4</td><td class="num">600</td></tr>
+            <tr><td>IRLZ44N MOSFET, resistors, flyback diodes</td><td class="num">4</td><td class="num">200</td></tr>
+            <tr><td>4-channel 5 V relay module</td><td class="num">1</td><td class="num">250</td></tr>
+            <tr><td>20×4 LCD with I2C backpack</td><td class="num">1</td><td class="num">450</td></tr>
+            <tr><td>12 V 20 W solar panel</td><td class="num">1</td><td class="num">1,200</td></tr>
+            <tr><td>12 V 7 Ah battery and 10 A charge controller</td><td class="num">1</td><td class="num">1,300</td></tr>
+            <tr><td>12 V loads (LED strips, USB buck modules)</td><td class="num">4</td><td class="num">600</td></tr>
+            <tr><td>Buck converter, fuse, wire, board, enclosure</td><td class="num">1</td><td class="num">500</td></tr>
+            <tr><td>Backup input: 12 V 2 A mains adapter and changeover relay</td><td class="num">1</td><td class="num">350</td></tr>
+            <tr><td><b>Total</b></td><td class="num"></td><td class="num"><b>5,900</b></td></tr>
+          </tbody></table></div>
+          <p class="note" style="margin-top:8px">Retail prices vary by city and seller; treat these as planning figures.</p>
+        </div>
+        <div class="panel prose">
+          <h3>Run the circuit virtually in Wokwi</h3>
+          <p>The <span class="mono">wokwi</span> folder beside this file holds an ESP32 project: <span class="mono">sketch.ino</span>, <span class="mono">allocator.h</span>, <span class="mono">diagram.json</span> and <span class="mono">libraries.txt</span>.</p>
+          <ol>
+            <li>Open wokwi.com and start a new ESP32 project.</li>
+            <li>Paste <span class="mono">sketch.ino</span> and <span class="mono">diagram.json</span> over the defaults, add <span class="mono">allocator.h</span> as a new file, and add the <span class="mono">LiquidCrystal I2C</span> library.</li>
+            <li>Press play. The potentiometer is the sun. The four slide switches plug vehicles into ports 1 to 4, and the fifth adds a waiting user.</li>
+            <li>LED brightness is each port's charging power. The LCD shows the budget, each port's share and the waiting time; the red LED lights when sharing is active.</li>
+          </ol>
+          <p class="note">The serial monitor prints one JSON telemetry line per second, the same message the commercial unit publishes over MQTT to the SCADA server.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUSINESS -->
+  <section id="p-biz" role="tabpanel" aria-labelledby="t-biz" hidden>
+    <div class="stack">
+      <div class="grid2">
+        <div class="panel prose">
+          <span class="eyebrow">What we sell</span>
+          <h3>A controller kit and a monitoring subscription</h3>
+          <ul>
+            <li><b>Controller kit:</b> main board, ten sensing and relay channels, backup changeover output, 7-inch kiosk display, 4G/Wi-Fi, enclosure. Sold to station builders and solar installers.</li>
+            <li><b>Cloud SCADA:</b> monthly fee per station for remote monitoring, alarms on the owner's phone, energy and revenue reports.</li>
+            <li><b>Later:</b> UPI pay-per-kWh billing with a small transaction fee, and capacity-planning reports from queue data.</li>
+          </ul>
+        </div>
+        <div class="panel prose">
+          <span class="eyebrow">Why a station owner buys</span>
+          <h3>More sockets on the same solar plant, and no trips</h3>
+          <ul>
+            <li>Ten ports can run on a plant sized for six, so the owner avoids buying extra panels, battery and converter for a short peak.</li>
+            <li>No overload trips and no lost charging time after each one.</li>
+            <li>The battery never goes below its reserve, which protects the most expensive part that wears out.</li>
+            <li>Drivers see a waiting time and come back.</li>
+            <li>Charging continues after dark on a small 3 kW backup connection, instead of a large grid connection sized for the full load.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Station owner: profit per station</h3>
+        <p class="note" style="margin-bottom:12px">Every figure is an assumption you can edit. Energy sold and backup energy per day start at the simulated result for a 10 kWp, 20 kWh, 10-port station with a 3 kW backup feed.</p>
+        <div class="calc">
+          <div class="field"><label for="b-kwh">Energy sold, kWh/day</label><input type="number" id="b-kwh" value="21" min="0" step="0.5"></div>
+          <div class="field"><label for="b-tar">Price, ₹ per kWh</label><input type="number" id="b-tar" value="15" min="0" step="0.5"></div>
+          <div class="field"><label for="b-days">Operating days/year</label><input type="number" id="b-days" value="330" min="0" max="365"></div>
+          <div class="field"><label for="b-oth">Other income, ₹/month</label><input type="number" id="b-oth" value="2500" min="0" step="100"></div>
+          <div class="field"><label for="b-gkwh">Backup energy, kWh/day</label><input type="number" id="b-gkwh" value="6" min="0" step="0.5"></div>
+          <div class="field"><label for="b-gtar">Grid price, ₹ per kWh</label><input type="number" id="b-gtar" value="8" min="0" step="0.5"></div>
+          <div class="field"><label for="b-capex">Station cost, ₹</label><input type="number" id="b-capex" value="1075000" min="0" step="10000"></div>
+          <div class="field"><label for="b-sub">Capital support, %</label><input type="number" id="b-sub" value="25" min="0" max="100"></div>
+          <div class="field"><label for="b-om">Upkeep, ₹/year</label><input type="number" id="b-om" value="32000" min="0" step="1000"></div>
+        </div>
+        <div class="out" id="b-out"></div>
+        <p class="note" style="margin-top:10px">Station cost assumed: 10 kWp PV about ₹5.0 lakh, 20 kWh LFP battery about ₹3.2 lakh, controller kit ₹0.38 lakh, ten charger modules, structure and wiring about ₹1.7 lakh, backup rectifier and a 3 kW grid connection about ₹0.47 lakh. Grid price is an assumption; EV charging tariffs differ by state. Other income is phone lockers and a display advert. Capital support models a PMEGP-style margin-money subsidy (15 to 35%). Where the Ministry of Power service-charge ceilings apply to a site, lower the price accordingly.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Our company: profit from selling controllers</h3>
+        <div class="calc">
+          <div class="field"><label for="c-bom">Kit build cost, ₹</label><input type="number" id="c-bom" value="19700" min="0" step="500"></div>
+          <div class="field"><label for="c-price">Kit selling price, ₹</label><input type="number" id="c-price" value="38000" min="0" step="500"></div>
+          <div class="field"><label for="c-units">Kits sold per year</label><input type="number" id="c-units" value="200" min="0" step="10"></div>
+          <div class="field"><label for="c-saas">SCADA fee, ₹/station/month</label><input type="number" id="c-saas" value="300" min="0" step="50"></div>
+          <div class="field"><label for="c-fixed">Fixed costs, ₹/year</label><input type="number" id="c-fixed" value="1800000" min="0" step="50000"></div>
+        </div>
+        <div class="out" id="c-out"></div>
+        <p class="note" style="margin-top:10px">Kit build cost assumed: processor board and PCB ₹2,700, ten current sensors ₹3,000, ten DC contactors ₹5,000, 7-inch display ₹4,000, 4G modem ₹1,500, power supply and enclosure ₹3,500. Fixed costs cover a team of four, certification and travel.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Government of India schemes that fit</h3>
+        <div class="scroll-x"><table><thead><tr><th>Scheme</th><th>What it offers</th><th>How Silent Assistant uses it</th></tr></thead><tbody>
+          <tr><td><b>PM E-DRIVE</b><br><span class="note">Ministry of Heavy Industries</span></td><td>₹2,000 crore for public EV charging, with about 72,300 chargers planned including about 48,400 for two- and three-wheelers. Up to 80% subsidy on upstream infrastructure, more at government premises. Battery charging and swapping stations qualify. Runs to 31 March 2028. Proposals go through state nodal agencies; BHEL is the implementing agency.</td><td>Offer the controller as the load-management layer for two- and three-wheeler sites proposed by state agencies, oil-company outlets and charge-point operators. The subsidy goes to the site owner, which lowers the cost of the station our kit goes into.</td></tr>
+          <tr><td><b>EV charging infrastructure guidelines, 2024</b><br><span class="note">Ministry of Power</span></td><td>Solar hours (9 am to 4 pm) get a cheaper supply tariff of 0.7 times the average cost of supply. Service-charge ceilings for AC charging of ₹3 per kWh in solar hours and ₹4 otherwise. The guidelines are advisory and states adopt them individually.</td><td>The controller already favours charging in solar hours, which is the behaviour the policy rewards. Price within the ceiling at sites where a state applies it.</td></tr>
+          <tr><td><b>PM Surya Ghar: Muft Bijli Yojana</b><br><span class="note">Ministry of New and Renewable Energy</span></td><td>Rooftop solar subsidy for homes: ₹30,000 per kW up to 2 kW and a ceiling of ₹78,000 at 3 kW, with a target of one crore households. The scheme also covers common facilities of housing societies, including EV charging; check the portal for the current rate.</td><td>Housing societies that add shared EV charging to subsidised rooftop solar need exactly this controller to stop evening overloads.</td></tr>
+          <tr><td><b>GST rates</b><br><span class="note">GST Council</span></td><td>Solar and other renewable energy devices moved from 12% to 5% from 22 September 2025. EV chargers and charging stations have been at 5% since August 2019.</td><td>Lower station cost for our customers. Confirm the rate for the controller itself with a tax adviser.</td></tr>
+          <tr><td><b>Startup India Seed Fund</b><br><span class="note">DPIIT</span></td><td>Through approved incubators: up to ₹20 lakh as a grant for proof of concept, prototype and trials, and up to ₹50 lakh as debt or convertible instruments for market entry.</td><td>Fund a ten-station pilot and certification after the hackathon.</td></tr>
+          <tr><td><b>NIDHI-PRAYAS</b><br><span class="note">Department of Science and Technology</span></td><td>Prototype grant of up to ₹10 lakh for innovators turning an idea into a working product.</td><td>Build the first field-grade six-port controller.</td></tr>
+          <tr><td><b>PMEGP</b><br><span class="note">Ministry of MSME, through KVIC</span></td><td>Credit-linked margin-money subsidy of 15 to 35% of project cost for new micro-enterprises, depending on category and location.</td><td>Finance for the people who buy stations: rural entrepreneurs and self-help groups. Eligibility is decided by the bank and KVIC.</td></tr>
+        </tbody></table></div>
+        <p class="note" style="margin-top:10px">Scheme terms change. Confirm each figure on the official portal before you quote it to judges: <a href="https://pmedrive.heavyindustries.gov.in" target="_blank" rel="noopener">PM E-DRIVE</a>, <a href="https://pmsuryaghar.gov.in" target="_blank" rel="noopener">PM Surya Ghar</a>, <a href="https://seedfund.startupindia.gov.in" target="_blank" rel="noopener">Startup India Seed Fund</a>. Reports used: <a href="https://mercomindia.com/government-notifies-guidelines-for-charging-stations-under-pm-e-drive" target="_blank" rel="noopener">Mercom on PM E-DRIVE charging guidelines</a>, <a href="https://www.mercomindia.com/ministry-of-power-releases-ev-charging-infrastructure-guidelines" target="_blank" rel="noopener">Mercom on the Ministry of Power guidelines</a>, <a href="https://www.energetica-india.net/news/government-slashes-gst-on-renewable-energy-devices-from-12-percent-to-5-percent" target="_blank" rel="noopener">Energetica India on GST</a>.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="panel prose">
+          <h3>Plan after the hackathon</h3>
+          <ol>
+            <li><b>Months 0 to 3:</b> bench prototype on 12 V, then a 48 V two-port unit with real e-rickshaw chargers.</li>
+            <li><b>Months 3 to 9:</b> ten pilot stations with one e-rickshaw union or panchayat, funded by a seed grant.</li>
+            <li><b>Months 9 to 18:</b> safety and EMC certification, tie-ups with solar installers, first 200 kits.</li>
+          </ol>
+        </div>
+        <div class="panel prose">
+          <h3>Risks we will be asked about</h3>
+          <ul>
+            <li><b>Charger compatibility:</b> power can only be varied on chargers that accept a current setpoint. For plain AC sockets the controller falls back to switching ports in timed turns.</li>
+            <li><b>Subsidy access:</b> central charging subsidies flow through state agencies, not to a startup directly.</li>
+            <li><b>Backup dependence:</b> the backup feed needs a grid connection. Where the grid is unreliable the station still runs on sun and battery, with shorter evening hours.</li>
+            <li><b>Price sensitivity:</b> the payback above depends on utilisation; a station used half as much takes twice as long.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* Silent Assistant station model + load-sharing controller. No DOM access: runs in the page and in Node. */
+(function (root) {
+  'use strict';
+
+  const CFG = {
+    pvKwp: 10, pvDerate: 0.82,           // 10 kWp array, wiring/temperature/soiling derate
+    battKwh: 20, battMaxC: 6, battMaxD: 6, // 48 V LFP bank, charge / discharge power limits (kW)
+    gridKw: 3, gridOn: 30, gridOff: 45,   // backup feed rating (kW); engages at this battery %, releases at this %
+    socFloor: 20, socDerate: 30,          // reserve floor and the SoC where discharge derating starts (%)
+    eff: 0.95, chgEff: 0.93,              // battery one-way efficiency, port converter efficiency
+    busKw: 10, ports: 10, portMax: 1.5,   // DC bus / converter rating, port count, per-port cap (kW)
+    rampUp: 0.5,                          // setpoints rise at most this fast (kW per minute); cuts are instant
+    fairKwh: 3, fairSoc: 80,              // fair-use cap per session while others wait
+    rotateMin: 10,                        // how often the hold order is re-ranked when power is scarce
+    queueMax: 12, arrX: 1.8, tripMin: 5, hotC: 70, noun: 'vehicle'   // arrX scales arrivals to the larger site
+  };
+
+  const TYPES = {
+    rick:  { code: 'R', name: 'E-rickshaw',   max: 1.2,  min: 0.30, cap: 5.0 },
+    scoot: { code: 'S', name: 'E-scooter',    max: 0.9,  min: 0.20, cap: 3.0 },
+    cycle: { code: 'C', name: 'E-cycle',      max: 0.3,  min: 0.08, cap: 0.6 },
+    phone: { code: 'M', name: 'Phone locker', max: 0.12, min: 0.03, cap: 0.2 }
+  };
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* The allocation rule (weighted max-min share with a guaranteed minimum).
+     items arrive in admission order; each has {demand, min, weight}.
+     1. Admit items while their minimums still fit in the budget; the rest are held at 0.
+     2. Find the water level k so that sum(clamp(k * weight, min, demand)) equals the budget.
+     Small loads get all they ask for, large loads split what is left equally, priority counts double. */
+  function shareOut(budget, items) {
+    const alloc = items.map(() => 0);
+    const adm = [];
+    let rem = budget;
+    items.forEach((it, i) => {
+      if (it.demand <= 0) return;
+      const m = Math.min(it.min, it.demand);
+      if (m <= rem + 1e-9) { adm.push(i); rem -= m; }
+    });
+    if (!adm.length) return alloc;
+    const floor = i => Math.min(items[i].min, items[i].demand);
+    const total = k => adm.reduce((s, i) => s + clamp(k * items[i].weight, floor(i), items[i].demand), 0);
+    const wanted = adm.reduce((s, i) => s + items[i].demand, 0);
+    if (wanted <= budget + 1e-9) { adm.forEach(i => { alloc[i] = items[i].demand; }); return alloc; }
+    let lo = 0, hi = 1;
+    while (total(hi) < budget && hi < 1e6) hi *= 2;
+    for (let n = 0; n < 40; n++) { const mid = (lo + hi) / 2; if (total(mid) > budget) hi = mid; else lo = mid; }
+    adm.forEach(i => { alloc[i] = clamp(lo * items[i].weight, floor(i), items[i].demand); });
+    return alloc;
+  }
+
+  function arrivalRate(t) {            // vehicles per hour by time of day
+    if (t >= 360 && t < 480) return 0.8;
+    if (t >= 480 && t < 660) return 1.8;
+    if (t >= 660 && t < 960) return 1.0;
+    if (t >= 960 && t < 1140) return 1.6;
+    if (t >= 1140 && t < 1320) return 0.45;
+    return 0.06;
+  }
+  function pickType(r) { return r < 0.45 ? 0 : r < 0.75 ? 1 : r < 0.9 ? 2 : 3; }
+
+  class Station {
+    constructor(o) {
+      o = o || {};
+      this.smart = o.smart !== false;
+      this.c = Object.assign({}, CFG, o.cfg || {});
+      this.T = o.types || TYPES;
+      this.keys = Object.keys(this.T);
+      this.rand = rng(o.seed || 7);
+      this.t = o.startMin == null ? 600 : o.startMin;
+      this.day = 0;
+      this.auto = !!o.auto;
+      this.backup = o.backup !== false; this.gridOn = false;
+      this.cloud = 0.1; this.soc = 60; this.temp = 34; this.hot = false;
+      this.ports = [];
+      for (let i = 0; i < this.c.ports; i++) this.ports.push({ id: i + 1, s: null, fault: null, comms: true, inject: false, set: 0, meas: 0 });
+      this.queue = [];
+      this.faults = { pvString: false, fan: false, bms: false, grid: false };
+      this.seq = 0; this.events = [];
+      this.tripUntil = -1; this.blocked = false; this.blockedAt = 0;
+      this.rankAt = -1e9; this.rankDirty = true;
+      this.m = { kwh: 0, pvKwh: 0, curtKwh: 0, served: 0, trips: 0, downMin: 0, waitSum: 0, waitN: 0, waitMax: 0, turned: 0, minSoc: 100, fairSum: 0, fairN: 0, gridKwh: 0 };
+      this.now = { pv: 0, exp: 0, budget: 0, busLim: this.c.busKw, battD: 0, load: 0, demand: 0, batt: 0, grid: 0, gridAvail: 0, curt: 0, limiter: 'none', fair: 1, tripped: false, tripLeft: 0 };
+    }
+    abs() { return this.day * 1440 + this.t; }
+    log(kind, msg) { this.events.unshift({ t: this.t, kind: kind, msg: msg }); if (this.events.length > 60) this.events.pop(); }
+    freePort() { return this.ports.find(p => !p.s && !p.fault) || null; }
+    tripped() { return !this.smart && this.abs() < this.tripUntil; }
+    canPlug() { return this.smart || (!this.blocked && !this.tripped()); }
+
+    arrive(type, prio, soc) {
+      const T = this.T[type];
+      const r = this.rand();
+      if (this.queue.length >= this.c.queueMax) { this.m.turned++; this.log('leave', T.name + ' turned away: queue is full'); return null; }
+      this.seq++;
+      const s0 = soc == null ? 15 + r * 35 : soc;
+      const u = { token: T.code + '-' + String(this.seq).padStart(2, '0'), type: type, prio: !!prio, soc0: s0, soc: s0, target: 90, kwh: 0, arrived: this.abs(), demand: 0, rank: 99, state: 'queue', wait: 0 };
+      if (u.prio && this.smart) {
+        let i = 0; while (i < this.queue.length && this.queue[i].prio) i++;
+        this.queue.splice(i, 0, u);
+      } else this.queue.push(u);
+      this.log('join', u.token + ' (' + T.name + (u.prio ? ', priority' : '') + ') arrived at ' + Math.round(s0) + '% charge');
+      this.fillPorts();
+      return u;
+    }
+    fillPorts() {
+      let p;
+      while (this.queue.length && (p = this.freePort()) && this.canPlug()) {
+        const u = this.queue.shift();
+        p.s = u; p.set = 0; u.state = 'full'; u.plugged = this.abs();
+        if (u.waited == null) {
+          u.waited = u.plugged - u.arrived;
+          this.m.waitSum += u.waited; this.m.waitN++; this.m.waitMax = Math.max(this.m.waitMax, u.waited);
+        }
+        this.rankDirty = true;
+        this.log('join', u.token + ' plugged into port ' + p.id);
+      }
+    }
+    release(p, why) {
+      const u = p.s; if (!u) return;
+      p.s = null; p.set = 0; p.meas = 0; this.rankDirty = true;
+      if (why === 'full') { this.m.served++; this.log('done', u.token + ' finished at ' + Math.round(u.soc) + '% and left port ' + p.id); }
+      else if (why === 'fair') { this.m.served++; this.log('done', u.token + ' reached the fair-use limit (' + u.kwh.toFixed(1) + ' kWh, ' + Math.round(u.soc) + '%) and freed port ' + p.id); }
+      else this.log('leave', u.token + ' unplugged from port ' + p.id);
+      this.blocked = false;
+      this.fillPorts();
+    }
+    leave(token) {
+      const p = this.ports.find(x => x.s && x.s.token === token);
+      if (p) { this.release(p, 'user'); return; }
+      const i = this.queue.findIndex(u => u.token === token);
+      if (i >= 0) { this.queue.splice(i, 1); this.log('leave', token + ' left the queue'); }
+    }
+    resetPort(id) {
+      const p = this.ports[id - 1];
+      p.fault = null; p.inject = false; p.comms = true;
+      this.log('ok', 'Port ' + id + ' reset by operator');
+      this.fillPorts();
+    }
+    isolate(p, why) {
+      const u = p.s;
+      p.fault = why; p.set = 0; p.meas = 0; p.inject = false;
+      if (u) { p.s = null; u.state = 'queue'; this.queue.unshift(u); this.rankDirty = true; }
+      this.log('alarm', 'Port ' + p.id + ' isolated (overcurrent)' + (u ? '; ' + u.token + ' moved to the front of the queue' : ''));
+      this.fillPorts();
+    }
+
+    step(dt) {
+      const N = this.now, dtH = dt / 60;
+      this.t += dt;
+      if (this.t >= 1440) { this.t -= 1440; this.day++; }
+      const abs = this.abs();
+
+      if (this.auto && dt > 0 && this.rand() < arrivalRate(this.t) * this.c.arrX / 60 * dt) this.arrive(this.keys[pickType(this.rand())], this.rand() < 0.08);
+
+      // Sources and limits
+      const x = (this.t - 360) / 720;
+      const clear = x > 0 && x < 1 ? Math.pow(Math.sin(Math.PI * x), 1.2) : 0;
+      N.exp = this.c.pvKwp * this.c.pvDerate * clear;
+      N.pv = N.exp * (1 - 0.75 * this.cloud) * (this.faults.pvString ? 0.5 : 1);
+      this.hot = this.temp > this.c.hotC || (this.hot && this.temp > this.c.hotC - 5);
+      N.busLim = this.c.busKw * (this.hot && this.smart ? 0.6 : 1);
+      const socD = this.faults.bms ? 0 : clamp((this.soc - this.c.socFloor) / (this.c.socDerate - this.c.socFloor), 0, 1);
+      N.battD = this.c.battMaxD * socD;
+      // Backup feed: comes in when the battery is low or offline, goes out once it has recovered (hysteresis)
+      if (this.soc <= this.c.gridOn || this.faults.bms) this.gridOn = true;
+      else if (this.soc >= this.c.gridOff) this.gridOn = false;
+      N.gridAvail = this.backup && this.gridOn && !this.faults.grid ? this.c.gridKw : 0;
+      N.budget = Math.min(N.busLim, N.pv + N.battD + N.gridAvail);
+
+      // What each connected vehicle can accept right now
+      this.ports.forEach(p => { if (!p.s) { p.set = 0; p.meas = 0; } });
+      const act = this.ports.filter(p => p.s && !p.fault);
+      act.forEach(p => {
+        const u = p.s, T = this.T[u.type];
+        const taper = u.soc < 80 ? 1 : 1 - 0.7 * (u.soc - 80) / 20;
+        u.demand = Math.min(this.c.portMax, T.max * taper);
+        if (!p.comms && this.smart) u.demand = Math.min(u.demand, T.min);   // fail-safe: no feedback, minimum power only
+      });
+      N.demand = act.reduce((s, p) => s + p.s.demand, 0);
+      N.tripped = false; N.tripLeft = 0;
+
+      if (this.smart) {
+        act.filter(p => p.inject).forEach(p => this.isolate(p, 'oc'));
+        const live = this.ports.filter(p => p.s && !p.fault);
+        live.forEach(p => { if (!p.s.demand) { const T = this.T[p.s.type]; p.s.demand = Math.min(this.c.portMax, T.max); } });
+        N.demand = live.reduce((s, p) => s + p.s.demand, 0);
+        if (this.rankDirty || abs - this.rankAt >= this.c.rotateMin) {
+          const prog = u => (u.soc - u.soc0) / Math.max(1, u.target - u.soc0);
+          live.slice().sort((a, b) => prog(a.s) - prog(b.s)).forEach((p, i) => { p.s.rank = i; });
+          this.rankAt = abs; this.rankDirty = false;
+        }
+        const order = live.slice().sort((a, b) => (b.s.prio - a.s.prio) || (a.s.rank - b.s.rank));
+        const alloc = shareOut(N.budget, order.map(p => ({ demand: p.s.demand, min: this.T[p.s.type].min, weight: p.s.prio ? 2 : 1 })));
+        order.forEach((p, i) => {
+          const u = p.s, tgt = alloc[i];
+          p.set = tgt < p.set ? tgt : Math.min(tgt, p.set + this.c.rampUp * dt);
+          u.state = tgt <= 0 ? 'hold' : (tgt < u.demand - 0.02 ? 'shared' : 'full');
+        });
+      } else {
+        if (this.blocked && abs - this.blockedAt > 60) { this.blocked = false; this.fillPorts(); }
+        if (N.pv + N.battD + N.gridAvail < 0.15 && abs >= this.tripUntil) {   // no sun and battery at reserve: station is simply dark
+          act.forEach(p => { p.set = 0; p.s.state = 'hold'; });
+        } else if (abs < this.tripUntil) {
+          act.forEach(p => { p.set = 0; p.s.state = 'trip'; });
+          this.m.downMin += dt; N.tripped = true; N.tripLeft = this.tripUntil - abs;
+        } else {
+          const load = N.demand;
+          const short = act.some(p => p.inject);
+          if (act.length && (load > N.busLim + 1e-6 || load - N.pv > N.battD + N.gridAvail + 1e-6 || this.temp > 85 || short)) {
+            this.tripUntil = abs + this.c.tripMin; this.m.trips++; this.blocked = true; this.blockedAt = abs;
+            N.tripped = true; N.tripLeft = this.c.tripMin;
+            const sp = act.find(p => p.inject);
+            if (sp) { sp.fault = 'oc'; sp.inject = false; const u = sp.s; sp.s = null; if (u) { u.state = 'queue'; this.queue.unshift(u); } }
+            else {
+              const last = act.slice().sort((a, b) => b.s.plugged - a.s.plugged)[0];
+              const u = last.s; last.s = null; u.state = 'queue'; this.queue.unshift(u);
+            }
+            this.ports.forEach(p => { p.set = 0; if (p.s) p.s.state = 'trip'; });
+            this.log('alarm', 'Overload trip: all ports off for ' + this.c.tripMin + ' min, one ' + this.c.noun + ' sent back to the queue');
+          } else act.forEach(p => { p.set = p.s.demand; p.s.state = 'full'; });
+        }
+      }
+
+      // Energy balance on the DC bus
+      let load = this.ports.reduce((s, p) => s + p.set, 0);
+      const supply = N.pv + N.battD + N.gridAvail;
+      if (load > supply + 1e-6) {                   // guard: never draw more than the sources can give
+        const k = supply / load;
+        this.ports.forEach(p => { p.set *= k; });
+        load = supply;
+      }
+      N.grid = 0;
+      const net = N.pv - load;
+      if (net >= 0) {
+        const room = dtH > 0 ? (100 - this.soc) / 100 * this.c.battKwh / dtH / this.c.eff : Infinity;
+        const ch = this.faults.bms ? 0 : Math.max(0, Math.min(net, this.c.battMaxC, room));
+        this.soc += ch * this.c.eff * dtH / this.c.battKwh * 100;
+        N.batt = -ch; N.curt = net - ch;
+      } else {
+        N.grid = Math.min(-net, N.gridAvail);       // solar first, then the backup feed, then the battery
+        const d = -net - N.grid;
+        this.soc -= d / this.c.eff * dtH / this.c.battKwh * 100;
+        N.batt = d; N.curt = 0;
+      }
+      this.soc = clamp(this.soc, 0, 100);
+      N.load = load;
+
+      // Deliver energy, close finished sessions
+      this.ports.forEach(p => {
+        const u = p.s; if (!u) return;
+        p.meas = p.set * (p.inject ? 1.35 : 1);
+        const e = p.set * dtH * this.c.chgEff;
+        u.kwh += e; this.m.kwh += e;
+        u.soc = Math.min(100, u.soc + e / this.T[u.type].cap * 100);
+      });
+      this.ports.forEach(p => {
+        const u = p.s; if (!u) return;
+        if (u.soc >= u.target - 0.01) this.release(p, 'full');
+        else if (this.smart && this.queue.length && !u.prio && (u.kwh >= this.c.fairKwh || u.soc >= this.c.fairSoc)) this.release(p, 'fair');
+      });
+
+      // Converter temperature (first-order lag)
+      const tT = 32 + 30 * Math.pow(load / this.c.busKw, 2) + (this.faults.fan ? 30 : 0);
+      this.temp += (tT - this.temp) * Math.min(1, dt / 8);
+
+      // What is limiting us, and how evenly power is shared
+      if (N.demand <= N.budget + 0.01) N.limiter = 'none';
+      else if (N.budget >= N.busLim - 0.01) N.limiter = this.hot && this.smart ? 'thermal' : 'bus';
+      else if (N.gridAvail > 0) N.limiter = 'backup';
+      else if (this.faults.bms) N.limiter = 'bms';
+      else if (socD <= 0.01) N.limiter = 'reserve';
+      else if (socD < 1) N.limiter = 'battery';
+      else N.limiter = 'source';
+      const xs = this.ports.filter(p => p.s && p.s.demand > 0).map(p => p.set / p.s.demand);
+      const sx = xs.reduce((a, b) => a + b, 0), sx2 = xs.reduce((a, b) => a + b * b, 0);
+      N.fair = xs.length >= 2 && sx2 > 0 ? sx * sx / (xs.length * sx2) : 1;
+      if (xs.length >= 2 && sx2 > 0) { this.m.fairSum += N.fair * dt; this.m.fairN += dt; }
+
+      this.m.pvKwh += N.pv * dtH; this.m.curtKwh += N.curt * dtH; this.m.gridKwh += N.grid * dtH;
+      this.m.minSoc = Math.min(this.m.minSoc, this.soc);
+      this.estimateWaits();
+    }
+
+    // Minutes left on a port before it frees up
+    portLeft(p) {
+      const u = p.s, T = this.T[u.type], N = this.now;
+      const occ = Math.max(1, this.ports.filter(q => q.s).length);
+      const fair = this.smart && !u.prio && this.queue.length > 0;
+      let need = Math.max(0, ((fair ? Math.min(u.target, Math.max(this.c.fairSoc, u.soc)) : u.target) - u.soc) / 100 * T.cap);
+      if (fair) need = Math.min(need, Math.max(0, this.c.fairKwh - u.kwh));
+      const pw = Math.max(p.set, 0.5 * Math.min(u.demand || T.max, N.budget / occ), 0.05) * this.c.chgEff;
+      return need / pw * 60;
+    }
+    estimateWaits() {
+      if (!this.queue.length) return;
+      const N = this.now;
+      const usable = this.ports.filter(p => !p.fault);
+      if (!usable.length) { this.queue.forEach(u => { u.wait = Infinity; }); return; }
+      const sunDelay = N.budget < 0.15 ? (this.t < 420 ? 420 - this.t : 1440 - this.t + 420) : 0;
+      const free = usable.map(p => p.s ? this.portLeft(p) : 0);
+      const occ = usable.filter(p => p.s).length;
+      this.queue.forEach(u => {
+        let i = 0;
+        for (let k = 1; k < free.length; k++) if (free[k] < free[i]) i = k;
+        u.wait = free[i] + sunDelay + (this.tripped() ? this.tripUntil - this.abs() : 0);
+        const T = this.T[u.type];
+        const need = Math.max(0, Math.min(this.c.fairKwh, (Math.min(u.target, this.c.fairSoc) - u.soc) / 100 * T.cap));
+        const pw = Math.max(0.1, Math.min(T.max, Math.max(N.budget, 0.5) / Math.min(usable.length, occ + 1))) * this.c.chgEff;
+        free[i] += need / pw * 60;
+      });
+    }
+  }
+
+  /* Alarm list for the SCADA view: each entry names the problem, its probable cause and what the controller did. */
+  function conditions(st) {
+    const N = st.now, out = [];
+    const why = {
+      bus: 'More ' + st.c.noun + 's connected than the converter rating can feed',
+      thermal: 'Converter is running derated because it is hot',
+      source: 'Sun plus the battery discharge limit cannot cover every ' + st.c.noun,
+      battery: 'Battery is low, so its support is being reduced',
+      reserve: 'Battery is at its reserve floor: only solar power is available',
+      bms: 'Battery is offline: only solar power is available',
+      backup: 'Battery is low or offline: the station is on solar plus the ' + st.c.gridKw + ' kW backup feed'
+    };
+    if (!st.smart && N.tripped) out.push({ id: 'A-100', sev: 'crit', title: 'Bus overload: station tripped', cause: 'Connected demand rose above what the sun, battery or converter could supply and nothing limited it', action: 'None available. All ports are off for ' + st.c.tripMin + ' min and one ' + st.c.noun + ' must unplug' });
+    if (st.smart && N.limiter !== 'none') out.push({ id: 'A-101', sev: 'info', title: 'Demand exceeds available power', cause: why[N.limiter], action: 'Load sharing active: every port throttled to its fair share, no trip' });
+    if (st.soc < st.c.socDerate && st.soc > st.c.socFloor + 0.6 && !st.faults.bms) out.push({ id: 'A-201', sev: 'warn', title: 'Battery low', cause: 'Evening or cloudy operation has drawn the pack below ' + st.c.socDerate + '%', action: st.smart ? 'Battery support derated in proportion; ports re-shared' : 'None: battery keeps discharging at full rate' });
+    if (st.soc <= st.c.socFloor + 0.6 && !st.faults.bms) out.push({ id: 'A-202', sev: 'serious', title: 'Battery at reserve floor', cause: 'Pack has reached the ' + st.c.socFloor + '% reserve that protects cell life', action: 'Battery discharge blocked; charging continues on solar' + (N.gridAvail > 0 ? ' and the backup feed' : ' only') });
+    if (st.faults.bms) out.push({ id: 'A-203', sev: 'crit', title: 'Battery offline (BMS fault)', cause: 'BMS opened the pack contactor: cell over-voltage, over-temperature or a wiring fault', action: st.smart ? 'Station continues on solar only; ports re-shared to the new budget' : 'None: load is dumped onto the PV input' });
+    if (N.exp > 1 && N.pv < 0.6 * N.exp) out.push({ id: 'A-301', sev: 'warn', title: 'PV output below expected', cause: st.faults.pvString && st.cloud < 0.45 ? 'Output is about half of the clear-sky value: one PV string is open, shaded or heavily soiled' : 'Heavy cloud cover (irradiance sensor confirms low light)', action: st.smart ? 'Power budget lowered; ports re-shared; battery covers the gap within its limits' : 'None' });
+    if (N.gridAvail > 0) out.push({ id: 'A-700', sev: 'info', title: 'Backup feed engaged', cause: st.faults.bms ? 'Battery is offline, so the backup feed is covering for it' : 'Battery fell to ' + st.c.gridOn + '%: sun and battery alone can no longer carry the load', action: 'Grid backup supplying up to ' + st.c.gridKw + ' kW after solar is used; released when the battery recovers to ' + st.c.gridOff + '%' });
+    if (st.backup && st.faults.grid) out.push({ id: 'A-701', sev: 'serious', title: 'Backup feed unavailable (grid outage)', cause: 'No voltage on the grid side of the backup rectifier: utility outage or a tripped incomer', action: st.smart ? 'Station continues on solar and battery only; budget lowered and ports re-shared' : 'None' });
+    st.ports.forEach(p => {
+      if (p.fault === 'oc') out.push({ id: 'A-40' + p.id, sev: 'crit', title: 'Port ' + p.id + ' overcurrent', cause: 'Measured current was 35% above the commanded setpoint: faulty charger or damaged cable', action: 'Port relay opened and latched; ' + st.c.noun + ' moved to the front of the queue; operator reset required' });
+      if (!p.comms) out.push({ id: 'A-41' + p.id, sev: 'serious', title: 'Port ' + p.id + ' current sensor lost', cause: 'No reading from the port sensor on the I2C/CAN bus: loose connector or failed sensor', action: st.smart ? 'Port held at minimum safe power until feedback returns' : 'None' });
+    });
+    if (st.hot) out.push({ id: 'A-501', sev: 'serious', title: 'Converter over-temperature', cause: 'Heatsink above ' + st.c.hotC + ' °C: cooling fan failure or blocked vent', action: st.smart ? 'Station limit derated to 60% until it cools below ' + (st.c.hotC - 5) + ' °C' : 'None until the thermal cut-out trips the station' });
+    const w = st.queue.reduce((mx, u) => Math.max(mx, isFinite(u.wait) ? u.wait : 999), 0);
+    if (st.queue.length >= 3 && w > 90) out.push({ id: 'A-601', sev: 'info', title: 'Long queue', cause: 'Arrivals are outpacing the energy the site can deliver', action: 'Fair-use cap applied to every session; logged for capacity planning (add PV or ports)' });
+    return out;
+  }
+  class Alarms {
+    constructor() { this.list = []; this.active = new Map(); }
+    update(st) {
+      const abs = st.abs(), seen = new Set();
+      conditions(st).forEach(c => {
+        seen.add(c.id);
+        let a = this.active.get(c.id);
+        if (!a) { a = Object.assign({ t: st.t, state: 'ACTIVE', ack: false }, c); this.active.set(c.id, a); this.list.unshift(a); if (this.list.length > 24) this.list.pop(); }
+        else { a.title = c.title; a.cause = c.cause; a.action = c.action; }
+        a.last = abs;
+      });
+      this.active.forEach((a, id) => { if (!seen.has(id) && (abs - a.last > 3 || abs < a.last)) { a.state = 'CLEARED'; this.active.delete(id); } });
+    }
+  }
+
+  /* Same arrivals, same weather, both control modes: the before/after table on the Problem tab. */
+  function runDays(smart, days) {
+    const sum = { kwh: 0, served: 0, trips: 0, downMin: 0, waitSum: 0, waitN: 0, waitMax: 0, curtKwh: 0, turned: 0, pvKwh: 0, minSoc: 0, arrived: 0, left: 0, gridKwh: 0 };
+    for (let d = 0; d < days; d++) {
+      const st = new Station({ smart: smart, seed: 100 + d * 7, startMin: 360, auto: true });
+      st.soc = 50;
+      for (let i = 0; i < 1440; i++) {
+        const base = d % 4 === 3 ? 0.5 : 0.1;
+        st.cloud = st.t >= 750 && st.t < 810 ? Math.max(base, 0.7) : base;
+        st.step(1);
+      }
+      const m = st.m;
+      sum.kwh += m.kwh; sum.served += m.served; sum.trips += m.trips; sum.downMin += m.downMin;
+      sum.waitSum += m.waitSum; sum.waitN += m.waitN; sum.waitMax += m.waitMax;
+      sum.curtKwh += m.curtKwh; sum.turned += m.turned; sum.pvKwh += m.pvKwh; sum.gridKwh += m.gridKwh; sum.minSoc += m.minSoc; sum.arrived += st.seq; sum.left += st.queue.length;
+    }
+    return {
+      kwh: sum.kwh / days, served: sum.served / days, trips: sum.trips / days, downMin: sum.downMin / days,
+      avgWait: sum.waitN ? sum.waitSum / sum.waitN : 0, maxWait: sum.waitMax / days,
+      curtKwh: sum.curtKwh / days, turned: sum.turned / days, pvKwh: sum.pvKwh / days, gridKwh: sum.gridKwh / days, minSoc: sum.minSoc / days, arrived: sum.arrived / days, stillWaiting: sum.left / days
+    };
+  }
+
+  root.SS = { CFG: CFG, TYPES: TYPES, Station: Station, Alarms: Alarms, shareOut: shareOut, runDays: runDays };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script src="suryashare3d.js?v=5"></script>
+<script>
+(function () {
+  'use strict';
+  const { CFG, TYPES, Station, Alarms, runDays } = window.SS;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const hhmm = t => { t = ((Math.round(t) % 1440) + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+  const dur = m => { if (!isFinite(m)) return 'not known'; const n = Math.round(m); return n < 1 ? 'under 1 min' : n < 60 ? n + ' min' : Math.floor(n / 60) + ' h ' + String(n % 60).padStart(2, '0') + ' m'; };
+  const inr = v => '₹' + Math.round(v).toLocaleString('en-IN');
+  const SL = { free: 'Free', full: 'Full power', shared: 'Sharing', hold: 'On hold', trip: 'Tripped', fault: 'Isolated' };
+  const LIM = { none: 'none', bus: 'converter rating', thermal: 'thermal derating', source: 'sun + battery rate', battery: 'low battery', reserve: 'battery reserve', bms: 'battery offline', backup: 'backup feed rating' };
+
+  let st, alarms, hist = [], lastKey = -1, running = true, speed = 4, chartsDirty = true;
+
+  /* ---------- simulation driver ---------- */
+  function sample() {
+    const k = Math.floor(st.abs() / 5);
+    if (k === lastKey) return;
+    lastKey = k;
+    hist.push({ t: (k * 5) % 1440, pv: st.now.pv, load: st.now.load, budget: st.now.budget, grid: st.now.grid, soc: st.soc });
+    if (hist.length > 288) hist.shift();
+    chartsDirty = true;
+  }
+  function advance(min) {
+    let left = min;
+    while (left > 1e-9) { const d = Math.min(1, left); st.step(d); alarms.update(st); sample(); left -= d; }
+  }
+  function refresh() { st.step(0); alarms.update(st); render(); }
+  function boot() {
+    st = new Station({ smart: true, seed: 21, startMin: 540, auto: true });
+    st.soc = 88; st.cloud = 0.15;
+    alarms = new Alarms(); hist = []; lastKey = -1;
+    ['rick', 'scoot', 'rick', 'cycle', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
+    advance(140);
+    syncControls();
+  }
+
+  /* ---------- live circuit ---------- */
+  const bx = i => 62 + i * 98;
+  const SH = { full: 'full', shared: 'share', hold: 'hold', trip: 'trip' };
+  function buildCircuit() {
+    const box = (x, y, w, h, t, s, id) => `<rect class="c-box" x="${x}" y="${y}" width="${w}" height="${h}"/><text class="c-t" x="${x + 8}" y="${y + 18}">${t}</text><text class="c-s" x="${x + 8}" y="${y + 32}">${s}</text>` + (id ? `<text class="c-v" id="${id}" x="${x + 8}" y="${y + h - 8}"></text>` : '');
+    const n = CFG.ports, W = bx(n - 1) + 62;
+    let s = `<svg viewBox="0 0 ${W} 396" role="img" aria-label="Single-line diagram: PV array, battery and a grid backup feed supply a 48 volt DC bus; ${n} controlled ports feed the vehicles">`;
+    s += '<path class="c-wire" d="M136 60H176M226 96V150M640 60H600M555 96V150M855 96V150"/>';
+    s += '<path class="c-flow pv" id="f-pv1" d="M136 60H176"/><path class="c-flow pv" id="f-pv2" d="M226 96V150"/>';
+    s += '<path class="c-flow batt" id="f-b1" d="M640 60H600"/><path class="c-flow batt" id="f-b2" d="M555 96V150"/>';
+    s += '<path class="c-flow grid" id="f-g1" d="M855 96V150"/>';
+    s += box(16, 24, 120, 72, 'PV array', CFG.pvKwp + ' kWp', 'c-pv') + box(176, 24, 100, 72, 'MPPT', 'charge controller', 'c-exp');
+    s += box(318, 14, 150, 86, 'Controller', 'ESP32, 1 s loop', 'c-mode');
+    s += box(510, 24, 90, 72, 'BMS', 'protection', 'c-batt') + box(640, 24, 124, 72, 'LFP battery', '48 V, ' + CFG.battKwh + ' kWh', 'c-soc');
+    s += box(790, 24, 130, 72, 'Grid backup', CFG.gridKw + ' kW rectifier', 'c-grid');
+    s += `<path class="c-sig" d="M393 100V178M${bx(0)} 178H${bx(n - 1) + 22}"/>`;
+    s += `<path class="c-bus" d="M24 150H${W - 24}"/><text class="c-s" x="24" y="141">48 V DC bus</text>`;
+    s += '<text class="c-v" id="c-avail" x="240" y="141"></text><text class="c-v" id="c-use" x="405" y="141"></text>';
+    for (let i = 0; i < n; i++) {
+      const x = bx(i);
+      s += `<g class="branch" id="br-${i}" data-state="free">`;
+      s += `<path class="c-wire" d="M${x} 150V196M${x} 236V253M${x} 271V284M${x} 304V322"/><path class="c-sig" d="M${x + 22} 178V196"/>`;
+      s += `<path class="c-flow load" id="f-p${i}" d="M${x} 150V322"/>`;
+      s += `<rect class="c-box c-conv" x="${x - 37}" y="196" width="74" height="40"/><text class="c-s" x="${x - 31}" y="211">P${i + 1} DC-DC</text><text class="c-v" id="c-set${i}" x="${x - 31}" y="228"></text>`;
+      s += `<circle class="c-box" cx="${x}" cy="262" r="9"/><text class="c-s" x="${x}" y="266" text-anchor="middle">A</text>`;
+      s += `<circle cx="${x}" cy="284" r="2.5" fill="var(--ink-2)"/><circle cx="${x}" cy="304" r="2.5" fill="var(--ink-2)"/><line id="c-rel${i}" x1="${x}" y1="304" x2="${x}" y2="284" stroke="var(--ink)" stroke-width="2"/>`;
+      s += `<rect class="c-box c-ldbox" x="${x - 44}" y="322" width="88" height="62"/><text class="c-t" id="c-tok${i}" x="${x - 37}" y="340"></text><text class="c-s" id="c-ty${i}" x="${x - 37}" y="355"></text><text class="c-v" id="c-st${i}" x="${x - 37}" y="374"></text>`;
+      s += '</g>';
+    }
+    $('circuit').innerHTML = s + '</svg>';
+  }
+  function flow(id, kw, reverse) {
+    const e = $(id);
+    e.style.opacity = kw > 0.02 ? 1 : 0;
+    e.style.animationDuration = (1.6 - Math.min(1.2, kw / 3)).toFixed(2) + 's';
+    e.style.animationDirection = reverse ? 'reverse' : 'normal';
+  }
+  function renderCircuit() {
+    const N = st.now;
+    $('c-pv').textContent = N.pv.toFixed(2) + ' kW';
+    $('c-exp').textContent = Math.round(st.cloud * 100) + '% cloud';
+    $('c-mode').textContent = !st.smart ? (N.tripped ? 'TRIPPED' : 'bypassed') : N.limiter === 'none' ? 'full power' : 'sharing';
+    $('c-batt').textContent = st.faults.bms ? 'OPEN' : N.batt > 0.02 ? '▼ ' + N.batt.toFixed(2) : N.batt < -0.02 ? '▲ ' + (-N.batt).toFixed(2) : 'idle';
+    $('c-soc').textContent = Math.round(st.soc) + '% charge';
+    $('c-grid').textContent = !st.backup ? 'switched off' : st.faults.grid ? 'OUTAGE' : N.gridAvail > 0 ? '▼ ' + N.grid.toFixed(2) + ' kW' : 'standby';
+    flow('f-g1', N.grid);
+    $('c-avail').textContent = 'avail ' + N.budget.toFixed(2) + ' kW';
+    $('c-use').textContent = 'in use ' + N.load.toFixed(2) + ' kW';
+    flow('f-pv1', N.pv); flow('f-pv2', N.pv);
+    flow('f-b1', Math.abs(N.batt), N.batt < 0); flow('f-b2', Math.abs(N.batt), N.batt < 0);
+    st.ports.forEach((p, i) => {
+      const u = p.s, state = p.fault ? 'fault' : u ? u.state : 'free';
+      $('br-' + i).dataset.state = state;
+      $('c-set' + i).textContent = p.fault ? 'isolated' : p.set.toFixed(2) + 'kW';
+      $('c-rel' + i).setAttribute('x2', bx(i) + (p.fault || !u ? 11 : 0));
+      $('c-tok' + i).textContent = u ? u.token + (u.prio ? ' ★' : '') : p.fault ? 'Fault' : 'Free';
+      $('c-ty' + i).textContent = u ? TYPES[u.type].name : '';
+      $('c-st' + i).textContent = u ? Math.round(u.soc) + '% ' + (SH[state] || '') : '';
+      flow('f-p' + i, p.set);
+    });
+  }
+
+  /* ---------- kiosk ---------- */
+  const pr = [];
+  function buildPorts() {
+    $('ports').innerHTML = st.ports.map(p => `<div class="port" data-state="free"><div class="port-h"><b>P${p.id}</b><span class="tok"></span><button class="btn small" hidden>Unplug</button></div><span class="state"></span><span class="ty"></span><div class="bar"><i></i><em hidden></em></div><div class="n"><span></span><span></span></div><div class="n"><span></span></div></div>`).join('');
+    [...$('ports').children].forEach((c, i) => {
+      const n = c.querySelectorAll('.n span');
+      pr[i] = { card: c, tok: c.querySelector('.tok'), btn: c.querySelector('button'), state: c.querySelector('.state'), ty: c.querySelector('.ty'), fill: c.querySelector('.bar i'), mark: c.querySelector('.bar em'), n1: n[0], n2: n[1], n3: n[2] };
+    });
+    $('ports').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.token) { st.leave(b.dataset.token); refresh(); } });
+    $('queue').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { st.leave(b.dataset.token); refresh(); } });
+  }
+  let qSig = null;
+  function renderKiosk() {
+    st.ports.forEach((p, i) => {
+      const r = pr[i], u = p.s, state = p.fault ? 'fault' : u ? u.state : 'free';
+      r.card.dataset.state = state; r.state.textContent = SL[state];
+      r.btn.hidden = !u; r.mark.hidden = !u;
+      if (u) {
+        r.btn.dataset.token = u.token; r.tok.textContent = u.token;
+        r.ty.textContent = TYPES[u.type].name + (u.prio ? ', priority' : '');
+        r.fill.style.width = (p.set / CFG.portMax * 100).toFixed(1) + '%';
+        r.mark.style.left = (u.demand / CFG.portMax * 100).toFixed(1) + '%';
+        r.n1.textContent = p.set.toFixed(2) + ' of ' + u.demand.toFixed(2) + ' kW';
+        r.n2.textContent = Math.round(u.soc) + '% → ' + u.target + '%';
+        r.n3.textContent = state === 'hold' ? 'waiting for power' : state === 'trip' ? 'station tripped' : dur(st.portLeft(p)) + ' left';
+      } else {
+        r.tok.textContent = ''; r.fill.style.width = '0';
+        r.ty.textContent = p.fault ? 'Relay open, needs reset' : 'Plug in here';
+        r.n1.textContent = ''; r.n2.textContent = ''; r.n3.textContent = '';
+      }
+    });
+    const q = st.queue, sig = q.map(u => u.token).join(',');
+    if (sig !== qSig) {
+      qSig = sig;
+      $('queue').innerHTML = q.length ? q.map((u, i) => `<li><span class="mono">${i + 1}</span><span class="mono">${u.token}</span><span class="ty">${TYPES[u.type].name}${u.prio ? ', priority' : ''}</span><span class="w"></span><button class="btn small" data-token="${u.token}">Leave</button></li>`).join('') : '<li class="empty">Nobody is waiting. New arrivals plug straight in.</li>';
+    }
+    if (q.length) [...$('queue').querySelectorAll('.w')].forEach((e, i) => { e.textContent = st.smart ? '~' + dur(q[i].wait) : 'wait unknown'; });
+    $('q-note').textContent = q.length ? q.length + ' waiting' : '';
+  }
+
+  /* ---------- charts ---------- */
+  function makeChart(host, cfg) {
+    host.innerHTML = '<svg></svg><div class="tip" hidden></div>';
+    const svg = host.firstChild, tip = host.lastChild;
+    let g = null, data = [], hover = -1;
+    const L = 34, R = 84, T = 8, B = 22, H = cfg.h;
+    function render(d) {
+      data = d;
+      const W = host.clientWidth; if (!W) return;
+      const n = Math.max(d.length, 2), yMax = cfg.yMax;
+      const X = i => L + (W - L - R) * i / (n - 1), Y = v => T + (H - T - B) * (1 - Math.min(yMax, Math.max(0, v)) / yMax);
+      let s = '';
+      cfg.ticks.forEach(v => { s += `<line class="${v === 0 ? 'axis' : 'grid'}" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`; });
+      if (cfg.ref) s += `<line class="cross" x1="${L}" x2="${W - R}" y1="${Y(cfg.ref.v)}" y2="${Y(cfg.ref.v)}"/><text x="${L + 4}" y="${Y(cfg.ref.v) - 4}">${cfg.ref.label}</text>`;
+      const stepT = W < 520 ? 240 : 120;
+      d.forEach((p, i) => { if (p.t % stepT === 0 && X(i) > L + 14 && X(i) < W - R - 14) s += `<text x="${X(i)}" y="${H - 5}" text-anchor="middle">${hhmm(p.t)}</text>`; });
+      cfg.series.forEach(se => {
+        if (!d.length) return;
+        s += `<path d="${d.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[se.key]).toFixed(1)).join('')}" stroke="${se.color}"${se.dash ? ' stroke-dasharray="5 4" stroke-width="1.5"' : ''}/>`;
+      });
+      if (d.length) {
+        const last = d[d.length - 1], xe = X(d.length - 1);
+        const labs = cfg.series.map(se => ({ se: se, y0: Y(last[se.key]), y: Y(last[se.key]) })).sort((a, b) => a.y - b.y);
+        for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 13) labs[i].y = labs[i - 1].y + 13;
+        const over = labs[labs.length - 1].y - (H - B);
+        if (over > 0) labs.forEach(o => { o.y -= over; });
+        labs.forEach(o => {
+          s += `<circle cx="${xe}" cy="${o.y0}" r="3.5" fill="${o.se.color}" stroke="var(--panel)" stroke-width="2"/><text class="end" x="${xe + 8}" y="${o.y + 4}">${o.se.short} ${last[o.se.key].toFixed(cfg.dp)}</text>`;
+        });
+      }
+      s += `<line class="cross" id="${cfg.id}-x" y1="${T}" y2="${H - B}" visibility="hidden"/><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = s;
+      g = { W: W, n: n, X: X };
+      if (hover >= 0) show(hover);
+    }
+    function show(i) {
+      if (!g || !data.length) return;
+      i = Math.max(0, Math.min(data.length - 1, i)); hover = i;
+      const x = g.X(i), cx = svg.querySelector('.cross[id]'), p = data[i];
+      cx.setAttribute('x1', x); cx.setAttribute('x2', x); cx.setAttribute('visibility', 'visible');
+      tip.innerHTML = `<div>${hhmm(p.t)}</div>` + cfg.series.map(se => `<div><i style="background:${se.color}"></i>${se.label} ${p[se.key].toFixed(cfg.dp)} ${cfg.unit}</div>`).join('');
+      tip.hidden = false;
+      tip.style.left = (x > g.W - 220 ? x - tip.offsetWidth - 10 : x + 10) + 'px'; tip.style.top = '8px';
+    }
+    svg.addEventListener('mousemove', e => { if (!g) return; const r = svg.getBoundingClientRect(); show(Math.round((e.clientX - r.left - L) / (g.W - L - R) * (g.n - 1))); });
+    svg.addEventListener('mouseleave', () => { hover = -1; tip.hidden = true; const cx = svg.querySelector('.cross[id]'); if (cx) cx.setAttribute('visibility', 'hidden'); });
+    return render;
+  }
+  let chPower, chSoc;
+
+  /* ---------- SCADA ---------- */
+  const KP = [['pv', 'Solar output'], ['load', 'Charging load'], ['bud', 'Available budget'], ['batt', 'Battery'], ['grid', 'Backup feed'], ['lim', 'Limited by'], ['fair', 'Sharing fairness'], ['temp', 'Converter temp'], ['energy', 'Delivered so far']];
+  function buildScada() {
+    $('kpis').innerHTML = KP.map(k => `<div class="kpi"><span class="lab">${k[1]}</span><b id="k-${k[0]}"></b><small id="k-${k[0]}-s"></small></div>`).join('');
+    $('ptable').innerHTML = st.ports.map(p => `<tr><td class="mono">P${p.id}</td><td></td><td></td><td class="num"></td><td class="num"></td><td class="num"></td><td></td><td><button class="btn small" data-port="${p.id}" hidden>Reset</button></td></tr>`).join('');
+    $('ptable').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { st.resetPort(+b.dataset.port); refresh(); } });
+    $('alarms').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { const a = alarms.list[+b.dataset.i]; if (a) a.ack = true; render(); } });
+  }
+  let aSig = null, logTop = null;
+  function renderScada() {
+    const N = st.now, set = (id, v, s) => { $('k-' + id).textContent = v; $('k-' + id + '-s').textContent = s; };
+    set('pv', N.pv.toFixed(2) + ' kW', 'clear sky would give ' + N.exp.toFixed(2));
+    set('load', N.load.toFixed(2) + ' kW', 'vehicles want ' + N.demand.toFixed(2));
+    set('bud', N.budget.toFixed(2) + ' kW', 'converter limit ' + N.busLim.toFixed(1));
+    set('batt', Math.round(st.soc) + '%', st.faults.bms ? 'offline' : N.batt > 0.02 ? 'discharging ' + N.batt.toFixed(2) + ' kW' : N.batt < -0.02 ? 'charging ' + (-N.batt).toFixed(2) + ' kW' : 'idle');
+    set('grid', N.grid.toFixed(2) + ' kW', (!st.backup ? 'switched off' : st.faults.grid ? 'grid outage' : N.gridAvail > 0 ? 'engaged, up to ' + CFG.gridKw + ' kW' : 'standby until battery is ' + CFG.gridOn + '%') + ', ' + st.m.gridKwh.toFixed(1) + ' kWh used');
+    set('lim', st.smart ? LIM[N.limiter] : N.tripped ? 'TRIPPED' : 'nothing', st.smart ? (N.limiter === 'none' ? 'all ports at full power' : 'ports are sharing') : 'no load management');
+    set('fair', N.fair.toFixed(2), "Jain's index, 1.00 is equal");
+    set('temp', Math.round(st.temp) + ' °C', st.hot ? 'over limit, derated' : 'limit ' + CFG.hotC + ' °C');
+    set('energy', st.m.kwh.toFixed(1) + ' kWh', st.m.served + ' sessions, ' + st.m.trips + ' trips');
+
+    st.ports.forEach((p, i) => {
+      const c = $('ptable').rows[i].cells, u = p.s, state = p.fault ? 'fault' : u ? u.state : 'free';
+      c[1].textContent = u ? u.token + ' ' + TYPES[u.type].name : '';
+      c[2].textContent = SL[state] + (!p.comms ? ', no sensor' : '');
+      c[3].textContent = u ? u.demand.toFixed(2) : ''; c[4].textContent = u ? p.set.toFixed(2) : ''; c[5].textContent = u ? (p.comms ? p.meas.toFixed(2) : 'n/a') : '';
+      c[6].textContent = p.fault ? 'OPEN, latched' : u ? 'closed' : 'open';
+      c[7].firstChild.hidden = !(p.fault || !p.comms);
+    });
+
+    const sig = alarms.list.map(a => a.id + a.state + a.ack + a.cause.length + a.action.length).join('|');
+    if (sig !== aSig) {
+      aSig = sig;
+      const name = { info: 'Advisory', warn: 'Warning', serious: 'Serious', crit: 'Critical' };
+      $('alarms').innerHTML = alarms.list.length ? alarms.list.map((a, i) => `<tr class="${a.state === 'CLEARED' ? 'cleared' : (!a.ack && a.sev !== 'info' ? 'unack' : '')}"><td><span class="sev ${a.sev}">${name[a.sev]}</span></td><td class="mono">${hhmm(a.t)}</td><td class="mono">${a.id}</td><td>${esc(a.title)}</td><td>${esc(a.cause)}</td><td>${esc(a.action)}</td><td>${a.state === 'CLEARED' ? 'Cleared' : a.ack || a.sev === 'info' ? 'Active' : `<button class="btn small" data-i="${i}">Acknowledge</button>`}</td></tr>`).join('') : '<tr><td colspan="7" class="note">No alarms. The station is running normally.</td></tr>';
+    }
+    if (st.events[0] !== logTop) {
+      logTop = st.events[0];
+      $('log').innerHTML = st.events.slice(0, 40).map(e => `<li data-k="${e.kind}"><time>${hhmm(e.t)}</time><span>${esc(e.msg)}</span></li>`).join('');
+    }
+    $('f-pv').setAttribute('aria-pressed', st.faults.pvString); $('f-fan').setAttribute('aria-pressed', st.faults.fan); $('f-bms').setAttribute('aria-pressed', st.faults.bms); $('f-grid').setAttribute('aria-pressed', st.faults.grid);
+  }
+
+  /* ---------- top rail ---------- */
+  function renderRail() {
+    const N = st.now;
+    $('r-time').textContent = hhmm(st.t);
+    $('r-pv').textContent = N.pv.toFixed(2) + ' kW';
+    $('r-load').textContent = N.load.toFixed(2) + ' kW';
+    $('r-bud').textContent = N.budget.toFixed(2) + ' kW';
+    $('r-soc').textContent = Math.round(st.soc) + '%' + (N.batt > 0.02 ? ' ▼' : N.batt < -0.02 ? ' ▲' : '');
+    $('r-grid').textContent = !st.backup ? 'off' : st.faults.grid ? 'outage' : N.gridAvail > 0 ? N.grid.toFixed(2) + ' kW' : 'standby';
+    const crit = alarms.list.some(a => a.state === 'ACTIVE' && a.sev === 'crit');
+    $('r-mode').textContent = !st.smart ? (N.tripped ? 'TRIPPED, back in ' + Math.ceil(N.tripLeft) + ' min' : 'Unmanaged, no limits enforced') : N.limiter === 'none' ? 'All vehicles at full power' : 'Sharing, limited by ' + LIM[N.limiter];
+    $('r-modechip').dataset.alert = crit ? 1 : 0;
+    $('tod-v').textContent = hhmm(st.t); $('cloud-v').textContent = Math.round(st.cloud * 100) + '%';
+    if (document.activeElement !== $('tod')) $('tod').value = Math.round(st.t / 5) * 5;
+  }
+  function render() {
+    renderRail(); renderCircuit(); renderKiosk(); renderScada();
+    if (chartsDirty) {
+      chartsDirty = false;
+      chPower(hist); chSoc(hist);
+    }
+    if (window.SS3D) window.SS3D.update(st);
+  }
+  function syncControls() {
+    $('cloud').value = Math.round(st.cloud * 100); $('auto').checked = st.auto;
+    seg('mode', st.smart ? '1' : '0'); seg('bk', st.backup ? '1' : '0'); qSig = null; aSig = null; logTop = null; chartsDirty = true;
+  }
+  function seg(id, v) { [...$(id).children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === String(v))); }
+
+  /* ---------- controls ---------- */
+  // Moving the clock by hand must carry the running trip and hold timers with it.
+  function jump(t) { const d = t - st.t; st.t = t; if (st.tripUntil > 0) st.tripUntil += d; st.blockedAt += d; st.rankAt += d; hist = []; lastKey = -1; chartsDirty = true; }
+  function wire() {
+    $('mode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.smart = b.dataset.v === '1'; st.tripUntil = -1; st.blocked = false; st.rankDirty = true; st.log('ok', st.smart ? 'Load-sharing controller switched on' : 'Controller bypassed: station unmanaged'); seg('mode', b.dataset.v); if (st.smart) st.fillPorts(); refresh(); });
+    $('bk').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.backup = b.dataset.v === '1'; st.log('ok', st.backup ? 'Backup feed set to automatic' : 'Backup feed switched off by operator'); seg('bk', b.dataset.v); refresh(); });
+    $('speed').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; speed = +b.dataset.v; seg('speed', b.dataset.v); });
+    $('run').addEventListener('click', () => { running = !running; $('run').textContent = running ? 'Pause' : 'Run'; });
+    $('tod').addEventListener('input', e => { jump(+e.target.value); refresh(); });
+    $('cloud').addEventListener('input', e => { st.cloud = +e.target.value / 100; refresh(); });
+    $('auto').addEventListener('change', e => { st.auto = e.target.checked; });
+    $('add').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.arrive(b.dataset.type, $('prio').checked); $('prio').checked = false; refresh(); });
+    $('sc-rush').addEventListener('click', () => { jump(9 * 60); ['rick', 'rick', 'scoot', 'rick', 'scoot', 'cycle', 'rick', 'scoot', 'rick', 'rick', 'scoot', 'phone', 'rick', 'scoot'].forEach(t => st.arrive(t, false)); refresh(); });
+    $('sc-cloud').addEventListener('click', () => { st.cloud = 0.85; $('cloud').value = 85; refresh(); });
+    $('sc-eve').addEventListener('click', () => { jump(18 * 60 + 15); st.soc = 33; refresh(); });
+    $('sc-reset').addEventListener('click', () => { boot(); render(); });
+    $('f-pv').addEventListener('click', () => { st.faults.pvString = !st.faults.pvString; refresh(); });
+    $('f-fan').addEventListener('click', () => { st.faults.fan = !st.faults.fan; refresh(); });
+    $('f-bms').addEventListener('click', () => { st.faults.bms = !st.faults.bms; refresh(); });
+    $('f-grid').addEventListener('click', () => { st.faults.grid = !st.faults.grid; st.log(st.faults.grid ? 'alarm' : 'ok', st.faults.grid ? 'Grid supply to the backup feed lost' : 'Grid supply to the backup feed restored'); refresh(); });
+    $('f-oc').addEventListener('click', () => { const p = st.ports[+$('f-port').value - 1]; if (p.s) p.inject = true; else { p.fault = 'oc'; st.log('alarm', 'Port ' + p.id + ' failed its self-test and was isolated'); } refresh(); });
+    $('f-comms').addEventListener('click', () => { st.ports[+$('f-port').value - 1].comms = false; refresh(); });
+    $('f-clear').addEventListener('click', () => { st.faults = { pvString: false, fan: false, bms: false, grid: false }; st.ports.forEach(p => { if (p.fault || !p.comms || p.inject) st.resetPort(p.id); }); refresh(); });
+
+    const tabs = [...document.querySelectorAll('.tabs button')];
+    const open = name => {
+      if (!$('p-' + name)) return;
+      tabs.forEach(b => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', on); $('p-' + b.dataset.tab).hidden = !on; });
+      chartsDirty = true; render();
+    };
+    tabs.forEach(b => b.addEventListener('click', () => { open(b.dataset.tab); try { history.replaceState(null, '', '#' + b.dataset.tab); } catch (e) { /* hash is a convenience only */ } }));
+    if (location.hash.length > 1) open(location.hash.slice(1));
+    window.addEventListener('hashchange', () => { if (location.hash.length > 1) open(location.hash.slice(1)); });
+    window.addEventListener('resize', () => { chartsDirty = true; });
+  }
+
+  /* ---------- static content computed at load ---------- */
+  function hardwareRows() {
+    const pins = [['0x40', 25, 32], ['0x41', 26, 33], ['0x44', 27, 16], ['0x45', 14, 17]];
+    $('hw-rows').innerHTML = pins.map((p, i) => {
+      const y = 56 + i * 80, m = y + 23;
+      const b = (x, w, t, s2) => `<rect class="c-box" x="${x}" y="${y}" width="${w}" height="46"/><text class="c-t" x="${x + 8}" y="${y + 19}">${t}</text><text class="c-s" x="${x + 8}" y="${y + 35}">${s2}</text>`;
+      return `<path class="c-wire" d="M186 ${m}H214M300 ${m}H322M408 ${m}H430M506 ${m}H528"/><path class="c-sig" d="M257 ${y}V${y - 8}H630M365 ${y}V${y - 8}M468 ${y}V${y - 8}"/>` +
+        b(214, 86, 'INA219', 'I2C ' + p[0]) + b(322, 86, 'MOSFET', 'PWM GPIO' + p[1]) + b(430, 76, 'Relay', 'GPIO' + p[2]) + b(528, 84, 'Port ' + (i + 1), '12 V load');
+    }).join('');
+  }
+  function comparison() {
+    const s = runDays(true, 20), b = runDays(false, 20);
+    const rows = [
+      ['Overload trips', b.trips, s.trips, 0, 'Each trip cuts power to every vehicle for 5 minutes'],
+      ['Minutes with the station down', b.downMin, s.downMin, 0, 'Charging time lost to trips'],
+      ['Average wait for a port, min', b.avgWait, s.avgWait, 1, 'From arrival to plug-in'],
+      ['Longest wait of the day, min', b.maxWait, s.maxWait, 0, 'The worst case a driver meets'],
+      ['Vehicles turned away', b.turned, s.turned, 1, 'Arrived to a full queue'],
+      ['Energy delivered, kWh', b.kwh, s.kwh, 1, 'Sun plus the backup feed in both cases'],
+      ['Backup energy bought, kWh', b.gridKwh, s.gridKwh, 1, 'Grid units used after the battery ran low'],
+      ['Lowest battery charge, %', b.minSoc, s.minSoc, 0, 'Both respect the 20% reserve']
+    ];
+    $('cmp').tBodies[0].innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1].toFixed(r[3])}</td><td class="num">${r[2].toFixed(r[3])}</td><td class="note">${r[4]}</td></tr>`).join('');
+    $('cmp-say').innerHTML = s.trips < 0.05 && b.trips >= 1
+      ? `The unmanaged station tripped about <b>${Math.round(b.trips)} times a day</b> and was down for <b>${Math.round(b.downMin)} minutes</b>. With Silent Assistant it <span class="better">did not trip</span>, and the average wait for a port fell from ${b.avgWait.toFixed(1)} to ${s.avgWait.toFixed(1)} minutes.`
+      : `Trips per day: ${b.trips.toFixed(1)} unmanaged, ${s.trips.toFixed(1)} with Silent Assistant.`;
+    $('b-kwh').value = (Math.round(s.kwh * 2) / 2).toFixed(1);
+    $('b-gkwh').value = (Math.round(s.gridKwh * 2) / 2).toFixed(1);
+  }
+  function calc() {
+    const v = id => Math.max(0, parseFloat($(id).value) || 0);
+    const tile = (l, val, sub) => `<div class="kpi"><span class="lab">${l}</span><b>${val}</b><small>${sub}</small></div>`;
+    const rev = v('b-kwh') * v('b-tar') * v('b-days') + v('b-oth') * 12, grid = v('b-gkwh') * v('b-gtar') * v('b-days'), net = rev - v('b-om') - grid, cap = v('b-capex') * (1 - Math.min(100, v('b-sub')) / 100);
+    $('b-out').innerHTML = tile('Revenue per year', inr(rev), 'energy + other income') + tile('Backup energy cost', inr(grid), 'per year') + tile('Profit per year', inr(net), 'after upkeep and backup energy') + tile('Owner pays', inr(cap), 'after capital support') + tile('Payback', net > 0 ? (cap / net).toFixed(1) + ' years' : 'never', 'simple payback') + tile('10-year profit', inr(net * 10 - cap), 'before battery replacement');
+    const gm = v('c-price') - v('c-bom'), hw = gm * v('c-units'), saas = v('c-saas') * 12 * v('c-units'), prof = hw + saas - v('c-fixed');
+    $('c-out').innerHTML = tile('Margin per kit', inr(gm), v('c-price') > 0 ? Math.round(gm / v('c-price') * 100) + '% of price' : '') + tile('Kit profit per year', inr(hw), 'before fixed costs') + tile('SCADA fees per year', inr(saas), 'first-year stations only') + tile('Operating profit', inr(prof), 'year one') + tile('Break-even', gm + v('c-saas') * 12 > 0 ? Math.ceil(v('c-fixed') / (gm + v('c-saas') * 12)) + ' kits' : 'n/a', 'per year');
+  }
+
+  /* ---------- start ---------- */
+  boot();
+  $('f-port').innerHTML = st.ports.map(p => '<option>' + p.id + '</option>').join('');
+  buildCircuit(); buildPorts(); buildScada(); hardwareRows();
+  chPower = makeChart($('ch-power'), { id: 'cp', h: 230, yMax: 12, ticks: [0, 3, 6, 9, 12], unit: 'kW', dp: 2, series: [{ key: 'budget', label: 'Available', short: 'Avail', color: 'var(--ink-2)', dash: true }, { key: 'pv', label: 'Solar', short: 'Solar', color: 'var(--s-pv)' }, { key: 'load', label: 'Charging', short: 'Load', color: 'var(--s-load)' }, { key: 'grid', label: 'Backup', short: 'Backup', color: 'var(--s-grid)' }] });
+  chSoc = makeChart($('ch-soc'), { id: 'cs', h: 190, yMax: 100, ticks: [0, 25, 50, 75, 100], unit: '%', dp: 0, ref: { v: CFG.socFloor, label: 'reserve floor ' + CFG.socFloor + '%' }, series: [{ key: 'soc', label: 'Battery charge', short: 'Charge', color: 'var(--s-batt)' }] });
+  wire();
+  comparison(); calc();
+  ['b-kwh', 'b-tar', 'b-days', 'b-oth', 'b-gkwh', 'b-gtar', 'b-capex', 'b-sub', 'b-om', 'c-bom', 'c-price', 'c-units', 'c-saas', 'c-fixed'].forEach(id => $(id).addEventListener('input', calc));
+  render();
+  if (window.SS3D) window.SS3D.start(st, { arrive: type => { st.arrive(type, false); refresh(); } });
+  setInterval(() => { if (running) advance(speed * 0.25); render(); }, 250);
+})();
+</script>
+
+</body>
+</html>
