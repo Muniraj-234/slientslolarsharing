@@ -1,0 +1,24 @@
+{
+  "name": "Silent Assassins Owner",
+  "short_name": "Assassins",
+  "description": "Owner app for the Silent Assassins solar power-sharing station: live telemetry, energy reports, alarms and an AI assistant.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "categories": ["utilities", "productivity", "business"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "AI Assistant", "url": "./index.html#ai" },
+    { "name": "Alarms", "url": "./index.html#alerts" },
+    { "name": "Energy report", "url": "./index.html#energy" }
+  ]
+}

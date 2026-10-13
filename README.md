@@ -9,6 +9,8 @@ shows each charger's status and the waiting time.
 
 **Customer mobile app:** https://muniraj-234.github.io/slientslolarsharing/app.html
 
+**Station owner app (PWA with assistant):** https://muniraj-234.github.io/slientslolarsharing/owner/
+
 ## What is in the demo
 
 - **Live simulation** with a 3D station (10 ports including 2 car bays, 10 kWp solar, 20 kWh battery, 3 kW grid backup) serving e-rickshaws, scooters, cycles, phones and cars
