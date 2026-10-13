@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a5a78">
+<title>Silent Assistant Charge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+/* Customer app: one column sized for a phone held in one hand. Three screens behind a bottom bar:
+   what the station can give right now, booking an arrival slot, and the customer's own charge. */
+:root{
+  --bg:#edf0f1; --panel:#fbfcfc; --panel-2:#e3e8ea; --ink:#111a1e; --ink-2:#43515a; --muted:#5f6e76;
+  --line:#d3dadd; --line-2:#aebbc1; --accent:#1a5a78; --accent-ink:#ffffff; --accent-soft:#dbeaf1;
+  --s-load:#2a78d6; --s-pv:#eb6834; --s-batt:#1baf7a; --s-grid:#4a3aa7;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --crit-soft:#fbe6e6;
+  --font-d:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-b:'Hind','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
+  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0c1215; --panel:#151c20; --panel-2:#1e282d; --ink:#f1f5f6; --ink-2:#bcc8cd; --muted:#8e9ca3;
+  --line:#28343a; --line-2:#3d4b52; --accent:#7cc4e2; --accent-ink:#0c1215; --accent-soft:#16303c;
+  --s-load:#3987e5; --s-pv:#d95926; --s-batt:#199e70; --s-grid:#9085e9; --crit-soft:#3a1c1c; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--panel-2);color:var(--ink);font-family:var(--font-b);font-size:16px;line-height:1.45}
+[hidden]{display:none!important}
+.app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column}
+h1,h2,h3{font-family:var(--font-d);font-weight:700;line-height:1.15;margin:0}
+h1{font-size:21px;letter-spacing:.01em} h2{font-size:20px} h3{font-size:17px;font-weight:600}
+p{margin:0} a{color:var(--accent)}
+.mono,.num{font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.lab{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.note{color:var(--muted);font-size:14px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;gap:10px;align-items:center;min-width:0}
+.brand svg{flex:none}
+.brand span{display:block;font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clock{text-align:right;flex:none}
+.clock b{display:block;font-family:var(--font-m);font-weight:500;font-size:18px;font-variant-numeric:tabular-nums}
+.clock span{font-size:12px;opacity:.85}
+.livebar{display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;color:var(--ink-2);background:var(--panel);border-bottom:1px solid var(--line)}
+.livebar i{width:8px;height:8px;border-radius:50%;background:var(--good);flex:none;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.livebar i{animation:none}}
+
+main{flex:1;padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+section{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+
+/* controls: every tap target is at least 44px tall */
+.btn{font-family:var(--font-b);font-size:16px;font-weight:600;min-height:46px;padding:10px 16px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{border-color:var(--crit);color:var(--crit)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.small{min-height:44px;padding:8px 12px;font-size:15px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* station screen */
+.big{display:flex;align-items:baseline;gap:8px}
+.big b{font-family:var(--font-m);font-weight:500;font-size:56px;line-height:1;font-variant-numeric:tabular-nums}
+.big span{font-family:var(--font-d);font-weight:600;font-size:22px;color:var(--ink-2)}
+.say{color:var(--ink-2)}
+.say[data-alert="1"]{color:var(--crit);font-weight:600}
+.mix{display:flex;gap:2px;height:16px;background:var(--panel-2);overflow:hidden}
+.mix i{display:block;height:100%;min-width:0;transition:width .4s}
+.mix i.free{background:repeating-linear-gradient(135deg,transparent 0 4px,var(--line-2) 4px 5px);outline:1px solid var(--line-2);outline-offset:-1px}
+.leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:14px;color:var(--ink-2)}
+.leg span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.leg i{width:12px;height:12px;flex:none}
+.leg b{font-family:var(--font-m);font-weight:500;color:var(--ink);margin-left:auto;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--panel);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile b{font-family:var(--font-m);font-weight:500;font-size:24px;font-variant-numeric:tabular-nums}
+.tile small{color:var(--muted);font-size:13px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:16px}
+.kv span{color:var(--ink-2)} .kv b{font-family:var(--font-m);font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.plist{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pc{border:1px solid var(--line);background:var(--bg);padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pc[data-me="1"]{border:2px solid var(--accent)}
+.pc-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.pc-h b{font-family:var(--font-d);font-size:17px}
+.pc small{font-family:var(--font-m);font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.st::before{content:"○";color:var(--muted)}
+.st[data-s="full"]::before{content:"●";color:var(--good)}
+.st[data-s="shared"]::before{content:"◐";color:var(--s-load)}
+.st[data-s="hold"]::before,.st[data-s="trip"]::before{content:"▲";color:var(--warn)}
+.st[data-s="fault"]::before{content:"■";color:var(--crit)}
+
+/* booking screen */
+.types{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.types button{font-family:var(--font-b);text-align:left;min-height:60px;padding:8px 12px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.types button b{font-size:16px;font-weight:600}
+.types button small{font-size:12.5px;color:var(--muted);font-family:var(--font-m)}
+.types button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.types button[aria-checked="true"] small{color:var(--accent-ink);opacity:.85}
+.field{display:flex;flex-direction:column;gap:2px}
+.field label{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;color:var(--ink-2)}
+.field label b{font-family:var(--font-m);font-weight:500;font-size:18px;color:var(--ink)}
+input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent)}
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.slot{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);background:var(--bg)}
+.slot[data-mine="1"]{border:2px solid var(--accent)}
+.s-time b{display:block;font-family:var(--font-m);font-weight:500;font-size:18px;font-variant-numeric:tabular-nums}
+.s-time span{font-size:12px;color:var(--muted)}
+.s-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.s-bar{height:8px;background:var(--panel-2)}
+.s-bar i{display:block;height:100%;background:var(--s-load);border-radius:0 3px 3px 0}
+.s-meta{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.s-est{font-size:14px;font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.tag{font-family:var(--font-d);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:0 5px;margin-left:6px;white-space:nowrap}
+.daysep{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 0 0}
+
+/* my charge screen */
+.token{font-family:var(--font-m);font-size:30px;font-weight:500;letter-spacing:.04em}
+.prog{height:14px;background:var(--panel-2);position:relative}
+.prog i{position:absolute;inset:0 auto 0 0;background:var(--s-batt);border-radius:0 4px 4px 0;transition:width .4s}
+.prog em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-2)}
+.pct{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:14px;color:var(--ink-2)}
+.blist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.blist li{border:1px solid var(--line);background:var(--bg);padding:12px;display:flex;flex-direction:column;gap:8px}
+.blist .when{font-family:var(--font-m);font-size:20px;font-weight:500}
+.blist .code{font-family:var(--font-m);color:var(--ink-2);font-size:14px}
+.empty{color:var(--muted)}
+.seg{display:flex}
+.seg button{flex:1;font-family:var(--font-b);font-size:15px;min-height:44px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-2);cursor:pointer;margin-right:-1px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);position:relative}
+details summary{cursor:pointer;font-family:var(--font-d);font-weight:600;font-size:17px;min-height:28px}
+details[open] summary{margin-bottom:10px}
+details .in{display:flex;flex-direction:column;gap:10px}
+
+/* bottom bar */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;pointer-events:none}
+.nav div{pointer-events:auto;width:100%;max-width:480px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border-top:1px solid var(--line-2);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav button{font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.03em;min-height:60px;border:0;background:none;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-top:3px solid transparent;position:relative}
+.nav button[aria-current="page"]{color:var(--ink);border-top-color:var(--accent)}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav .dot{position:absolute;top:8px;left:calc(50% + 10px);width:9px;height:9px;border-radius:50%;background:var(--good)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:7;width:calc(100% - 32px);max-width:448px;background:var(--ink);color:var(--bg);padding:12px 14px;font-size:15px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="36" height="36" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" fill="var(--accent-ink)"/><circle cx="22" cy="16" r="6" fill="var(--s-pv)"/><path d="M8 30h28M12 30v7M22 30v7M32 30v7" stroke="var(--accent)" stroke-width="2.5" fill="none"/></svg>
+      <div style="min-width:0"><h1>Silent Assistant</h1><span>Solar charging hub</span></div>
+    </div>
+    <div class="clock"><b id="clock">--:--</b><span>station time</span></div>
+  </header>
+  <div class="livebar"><i></i><span id="src">Connecting to the station…</span></div>
+
+  <main>
+    <!-- STATION -->
+    <section id="v-station">
+      <div class="card">
+        <span class="lab">Power available now</span>
+        <div class="big"><b id="h-avail">0.0</b><span>kW</span></div>
+        <p class="say" id="h-say"></p>
+        <div class="mix" id="h-mix" role="img"></div>
+        <div class="leg" id="h-leg"></div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><span class="lab">Free chargers</span><b id="t-free">0</b><small id="t-free-s"></small></div>
+        <div class="tile"><span class="lab">Wait if you come now</span><b id="t-wait">0</b><small id="t-wait-s"></small></div>
+        <div class="tile"><span class="lab">Station battery</span><b id="t-soc">0%</b><small id="t-soc-s"></small></div>
+        <div class="tile"><span class="lab">Backup power</span><b id="t-grid">off</b><small id="t-grid-s"></small></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>If you plug in now</h2><button class="btn small" data-go="book">Change vehicle</button></div>
+        <p class="note" id="n-veh"></p>
+        <div class="kv" id="n-kv"></div>
+        <div class="row2"><button class="btn" id="join">Join now</button><button class="btn primary" data-go="book">Book a slot</button></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Chargers</h2><span class="note" id="p-note"></span></div>
+        <div class="plist" id="plist"></div>
+      </div>
+    </section>
+
+    <!-- BOOK -->
+    <section id="v-book" hidden>
+      <div class="card">
+        <h2>Your vehicle</h2>
+        <div class="types" id="types" role="radiogroup" aria-label="Vehicle type"></div>
+        <div class="field"><label for="soc">Battery now <b id="soc-v"></b></label><input type="range" id="soc" min="5" max="90" step="5"></div>
+        <div class="field"><label for="tgt">Charge to <b id="tgt-v"></b></label><input type="range" id="tgt" min="20" max="100" step="5"></div>
+        <p class="note" id="need"></p>
+      </div>
+      <div class="card">
+        <h2>Pick an arrival slot</h2>
+        <p class="note">Booked slots get priority at the station and charge to your full target. The bar is the power the station expects to have, from the solar forecast plus the backup feed.</p>
+        <ol class="slots" id="slots"></ol>
+      </div>
+    </section>
+
+    <!-- MY CHARGE -->
+    <section id="v-me" hidden>
+      <div class="card" id="sess"></div>
+      <div class="card">
+        <h2>My bookings</h2>
+        <ul class="blist" id="blist"></ul>
+      </div>
+      <details class="card">
+        <summary>Demo controls</summary>
+        <div class="in">
+          <p class="note" id="d-note"></p>
+          <span class="lab">Station clock speed</span>
+          <div class="seg" id="speed"><button data-v="1" aria-pressed="true">1 min / s</button><button data-v="10" aria-pressed="false">10 min / s</button><button data-v="60" aria-pressed="false">1 h / s</button></div>
+          <button class="btn" id="jump">Skip to my next booking</button>
+          <a href="index.html" target="_blank" rel="noopener">Open the station dashboard</a>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <nav class="nav" aria-label="Screens"><div>
+    <button data-go="station" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 13h6l-1 9 8-11h-6z"/></svg>Station</button>
+    <button data-go="book"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Book</button>
+    <button data-go="me"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>My charge<i class="dot" id="navdot" hidden></i></button>
+  </div></nav>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script src="model.js?v=1"></script>
+<script src="station-link.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+  const { TYPES, Station, arrivalRate } = window.SS, Link = window.SSLink;
+  const PRICE = 15;                      // ₹ per kWh delivered; the same starting assumption as the business case
+  const KEY = 'silent-assistant-app-v1';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const hhmm = t => { t = ((Math.round(t) % 1440) + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+  const dur = m => { const n = Math.round(m); return n < 1 ? 'under 1 min' : n < 60 ? n + ' min' : Math.floor(n / 60) + ' h ' + String(n % 60).padStart(2, '0') + ' m'; };
+  const inr = v => '₹' + Math.round(v).toLocaleString('en-IN');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const SL = { free: 'Free', full: 'Full power', shared: 'Sharing', hold: 'On hold', trip: 'Tripped', fault: 'Out of order' };
+  const SPEC = { rick: 'E-rickshaw', scoot: 'E-scooter', cycle: 'E-cycle', phone: 'Phone / power bank' };
+
+  /* ---------- what this phone remembers ---------- */
+  let me = { v: { type: 'scoot', soc: 35, target: 90 }, bookings: [], session: null };
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v && TYPES[s.v.type]) { me = s; if (me.session) me.session.stale = true; } } catch (e) { /* first visit or storage blocked */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(me)); } catch (e) { /* the app still works for this visit */ } };
+
+  /* ---------- the station: a dashboard tab if one is open, otherwise a simulated station in this page ---------- */
+  let st, snap = null, remoteAt = 0, speed = 1, seq = 0;
+  const pending = new Map();
+  function boot() {
+    st = new Station({ smart: true, seed: 21, startMin: 540, auto: true });
+    st.soc = 88; st.cloud = 0.15;
+    ['rick', 'scoot', 'rick', 'cycle', 'rick', 'scoot', 'rick'].forEach(t => st.arrive(t, false));
+    for (let i = 0; i < 140; i++) st.step(1);
+  }
+  const linked = () => Date.now() - remoteAt < 3000;
+  const ch = 'BroadcastChannel' in window ? new BroadcastChannel(Link.CH) : null;
+  if (ch) ch.onmessage = e => {
+    const m = e.data; if (!m) return;
+    if (m.kind === 'snap') { snap = m.snap; remoteAt = Date.now(); }
+    else if (m.kind === 'reply' && pending.has(m.id)) { pending.get(m.id)(m.r); pending.delete(m.id); }
+  };
+  function send(cmd) {
+    return new Promise(res => {
+      if (!linked()) { const r = Link.handle(st, cmd); st.step(0); snap = Link.snapshot(st, 'local'); res(r); return; }
+      const id = (++seq) + '-' + Math.random().toString(36).slice(2, 8);
+      pending.set(id, res); ch.postMessage({ kind: 'cmd', id: id, cmd: cmd });
+      setTimeout(() => { if (pending.has(id)) { pending.delete(id); res({ ok: false, why: 'The station did not answer. Please try again.' }); } }, 2000);
+    });
+  }
+  function advance(min) { let left = min; while (left > 1e-9) { const d = Math.min(1, left); st.step(d); left -= d; } }
+  const now = () => snap.day * 1440 + snap.t;
+
+  /* ---------- estimates ---------- */
+  // Minutes to charge at a given power share; charging tapers above 80% as it does at the station.
+  function chargeMin(type, soc, target, share) {
+    const T = TYPES[type]; let min = 0;
+    for (let s = soc; s < target; s++) {
+      const taper = s < 80 ? 1 : 1 - 0.7 * (s - 80) / 20;
+      min += (T.cap / 100) / (Math.max(0.02, Math.min(share, T.max * taper)) * snap.cfg.chgEff) * 60;
+    }
+    return min;
+  }
+  const needKwh = v => Math.max(0, v.target - v.soc) / 100 * TYPES[v.type].cap;
+  // Expected station power in a future slot: clear-sky solar scaled by today's cloud, plus the backup feed. Battery support is left out, so this is cautious.
+  function forecast(t) {
+    const c = snap.cfg, x = (t - 360) / 720, clear = x > 0 && x < 1 ? Math.pow(Math.sin(Math.PI * x), 1.2) : 0;
+    const power = Math.min(c.busKw, c.pvKwp * c.pvDerate * clear * (1 - 0.75 * snap.cloud) + c.gridKw);
+    const busy = clamp(arrivalRate(t) * c.arrX * 1.2, 1, c.ports);      // vehicles expected on charge
+    return { power: power, busy: busy };
+  }
+  const shareOf = (type, power, vehicles) => Math.min(TYPES[type].max, snap.cfg.portMax, power / Math.max(1, vehicles));
+
+  /* ---------- station screen ---------- */
+  let plSig = null;
+  function renderStation() {
+    const s = snap, c = s.cfg, occ = s.ports.filter(p => p.token).length, free = s.ports.filter(p => p.state === 'free').length;
+    $('h-avail').textContent = s.tripped ? '0.0' : s.budget.toFixed(1);
+    const say = $('h-say');
+    say.dataset.alert = s.tripped ? 1 : 0;
+    say.textContent = s.tripped ? 'The station has tripped on overload. Charging resumes in about ' + Math.ceil(s.tripLeft) + ' min.'
+      : s.budget < 0.15 ? 'No power right now: the sun is down and the backup feed is not available.'
+      : !occ ? 'No vehicle is charging. Plug in and you get full power.'
+      : s.limiter === 'none' ? 'Every vehicle is charging at full power.'
+      : 'Busy: power is shared fairly between ' + occ + ' vehicles, so charging is slower than usual.';
+    const batt = Math.max(0, s.batt), solar = Math.max(0, s.load - batt - s.grid), spare = Math.max(0, s.budget - s.load);
+    const parts = [['Solar', solar, 'var(--s-pv)'], ['Battery', batt, 'var(--s-batt)'], ['Backup', s.grid, 'var(--s-grid)']];
+    $('h-mix').innerHTML = parts.map(p => p[1] > 0.02 ? `<i style="width:${(p[1] / c.busKw * 100).toFixed(1)}%;background:${p[2]}"></i>` : '').join('') + (spare > 0.02 ? `<i class="free" style="width:${(spare / c.busKw * 100).toFixed(1)}%"></i>` : '');
+    $('h-mix').setAttribute('aria-label', 'In use ' + s.load.toFixed(1) + ' kilowatts of ' + s.budget.toFixed(1) + ' available; station limit ' + c.busKw + ' kilowatts');
+    $('h-leg').innerHTML = parts.map(p => `<span><i style="background:${p[2]}"></i>${p[0]} in use<b>${p[1].toFixed(1)} kW</b></span>`).join('') + `<span><i class="free" style="outline:1px solid var(--line-2);outline-offset:-1px"></i>Free<b>${spare.toFixed(1)} kW</b></span>`;
+
+    $('t-free').textContent = free + ' of ' + c.ports;
+    $('t-free-s').textContent = s.queue.length ? s.queue.length + ' waiting in the queue' : free ? 'no queue' : 'all in use';
+    $('t-wait').textContent = s.waitNew < 0 ? 'Unknown' : s.waitNew < 1 ? 'No wait' : '~' + dur(s.waitNew);
+    $('t-wait-s').textContent = s.waitNew < 0 ? 'station is not managed' : s.waitNew < 1 ? 'a charger is free' : 'until a charger frees up';
+    $('t-soc').textContent = Math.round(s.soc) + '%';
+    $('t-soc-s').textContent = s.batt > 0.02 ? 'helping with ' + s.batt.toFixed(1) + ' kW' : s.batt < -0.02 ? 'charging from the sun' : 'idle';
+    $('t-grid').textContent = s.grid > 0.02 ? s.grid.toFixed(1) + ' kW' : s.gridAvail > 0 ? 'Ready' : 'Standby';
+    $('t-grid-s').textContent = s.gridAvail > 0 ? 'on, keeps charging going' : 'comes on when the battery is low';
+
+    const v = me.v, share = shareOf(v.type, s.budget, occ + (free ? 1 : 0)), need = needKwh(v);
+    $('n-veh').textContent = SPEC[v.type] + ', ' + v.soc + '% now, charge to ' + v.target + '%';
+    $('n-kv').innerHTML = `<span>Wait for a charger</span><b>${s.waitNew < 0 ? 'unknown' : s.waitNew < 1 ? 'none' : '~' + dur(s.waitNew)}</b>` +
+      `<span>Your charging power</span><b>~${share.toFixed(2)} kW</b>` +
+      `<span>Charging time</span><b>${share > 0.03 ? '~' + dur(chargeMin(v.type, v.soc, v.target, share)) : 'unknown'}</b>` +
+      `<span>Energy and cost</span><b>${need.toFixed(1)} kWh, about ${inr(need * PRICE)}</b>`;
+    $('join').disabled = !!active() || s.queue.length >= c.queueMax;
+
+    const tok = active() ? me.session.token : null;
+    const sig = s.ports.map(p => p.id + p.state + (p.token === tok)).join('|');
+    if (sig !== plSig) {
+      plSig = sig;
+      $('plist').innerHTML = s.ports.map(p => `<div class="pc" data-me="${p.token && p.token === tok ? 1 : 0}"><div class="pc-h"><b>P${p.id}</b><span class="st" data-s="${p.state}">${p.token && p.token === tok ? 'You' : SL[p.state]}</span></div><small></small></div>`).join('');
+    }
+    [...$('plist').children].forEach((el, i) => {
+      const p = s.ports[i];
+      el.lastChild.textContent = p.state === 'free' ? 'plug in here' : p.state === 'fault' ? 'being repaired' : p.state === 'trip' ? 'waiting for reset' : p.set.toFixed(2) + ' kW, ' + dur(p.left) + ' left';
+    });
+    $('p-note').textContent = occ + ' charging';
+  }
+
+  /* ---------- booking screen ---------- */
+  let slSig = null;
+  function buildTypes() {
+    $('types').innerHTML = Object.keys(TYPES).map(k => `<button role="radio" data-type="${k}" aria-checked="false"><b>${SPEC[k]}</b><small>up to ${TYPES[k].max} kW, ${TYPES[k].cap} kWh</small></button>`).join('');
+    $('types').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; me.v.type = b.dataset.type; save(); render(); });
+    $('soc').addEventListener('input', e => { me.v.soc = +e.target.value; if (me.v.target < me.v.soc + 10) me.v.target = Math.min(100, me.v.soc + 10); save(); render(); });
+    $('tgt').addEventListener('input', e => { me.v.target = Math.max(+e.target.value, me.v.soc + 10); save(); render(); });
+  }
+  function renderBook() {
+    const v = me.v, c = snap.cfg;
+    [...$('types').children].forEach(b => b.setAttribute('aria-checked', b.dataset.type === v.type));
+    if (document.activeElement !== $('soc')) $('soc').value = v.soc;
+    if (document.activeElement !== $('tgt') || +$('tgt').value !== v.target) $('tgt').value = v.target;
+    $('soc-v').textContent = v.soc + '%'; $('tgt-v').textContent = v.target + '%';
+    $('need').textContent = 'Needs ' + needKwh(v).toFixed(1) + ' kWh, about ' + inr(needKwh(v) * PRICE) + ' at ₹' + PRICE + ' per kWh.';
+
+    // Arrival slots: every half hour from now, 06:00 to 22:00, today and into tomorrow.
+    const first = Math.ceil((now() + 1) / 30) * 30, rows = [];
+    for (let a = first; rows.length < 18 && a < first + 1440; a += 30) {
+      const t = a % 1440; if (t < 360 || t > 1290) continue;
+      const f = forecast(t), share = shareOf(v.type, f.power, f.busy);
+      rows.push({ abs: a, t: t, f: f, min: chargeMin(v.type, v.soc, v.target, share), mine: me.bookings.some(b => b.abs === a) });
+    }
+    const best = rows.reduce((m, r) => (!m || r.min < m.min - 0.5 ? r : m), null);
+    const sig = rows.map(r => r.abs + ':' + r.f.power.toFixed(1) + ':' + Math.round(r.min) + ':' + r.mine).join('|') + '|' + snap.day;
+    if (sig === slSig) return;
+    slSig = sig;
+    let html = '', day = snap.day;
+    rows.forEach(r => {
+      const d = Math.floor(r.abs / 1440);
+      if (d !== day) { day = d; html += '<li class="daysep">Tomorrow</li>'; }
+      const lvl = r.f.busy / c.ports;
+      html += `<li class="slot" data-mine="${r.mine ? 1 : 0}"><div class="s-time"><b>${hhmm(r.t)}</b><span>to ${hhmm(r.t + 30)}</span></div>` +
+        `<div class="s-body"><div class="s-bar"><i style="width:${(r.f.power / c.busKw * 100).toFixed(0)}%"></i></div>` +
+        `<div class="s-meta"><span>${r.f.power.toFixed(1)} kW expected</span><span>${lvl < 0.3 ? 'Quiet' : lvl < 0.5 ? 'Moderate' : 'Busy'}</span></div>` +
+        `<div class="s-est">~${dur(r.min)}${r === best ? '<span class="tag">Fastest</span>' : ''}</div></div>` +
+        `<button class="btn small${r.mine ? '' : ' primary'}" data-abs="${r.abs}" ${r.mine ? 'disabled' : ''}>${r.mine ? 'Booked' : 'Book'}</button></li>`;
+    });
+    $('slots').innerHTML = html;
+  }
+  function book(abs) {
+    if (me.bookings.length >= 3) { toast('You already hold 3 bookings. Cancel one first.'); return; }
+    const v = me.v, code = 'SA-' + hhmm(abs % 1440).replace(':', '') + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
+    me.bookings.push({ abs: abs, type: v.type, soc: v.soc, target: v.target, code: code });
+    me.bookings.sort((a, b) => a.abs - b.abs); save(); slSig = null; blSig = null; render();
+    toast('Booked ' + hhmm(abs % 1440) + ' to ' + hhmm(abs % 1440 + 30) + '. Check in from ' + hhmm(abs % 1440 - 10) + ' under My charge.');
+  }
+
+  /* ---------- my charge screen ---------- */
+  const active = () => me.session && !me.session.done;
+  async function checkin(b) {
+    if (active()) { toast('You already have a charge in progress.'); return; }
+    const v = b || me.v;
+    const r = await send({ kind: 'checkin', type: v.type, soc: v.soc, target: v.target, prio: !!b });
+    if (!r.ok) { toast(r.why); return; }
+    me.session = { token: r.token, type: v.type, soc0: v.soc, soc: v.soc, target: v.target, kwh: 0, booked: !!b, done: false };
+    if (b) me.bookings = me.bookings.filter(x => x !== b);
+    save(); blSig = null; slSig = null; go('me'); render();
+    toast('Checked in. Your token is ' + r.token + '.');
+  }
+  function track() {              // follow our token through the station snapshot
+    const s = me.session; if (!s || s.done) return;
+    const p = snap.ports.find(x => x.token === s.token), qi = snap.queue.findIndex(x => x.token === s.token);
+    if (p) { s.seen = true; s.stale = false; s.port = p.id; s.state = p.state; s.set = p.set; s.left = p.left; s.soc = p.soc; s.kwh = p.kwh; s.pos = -1; }
+    else if (qi >= 0) { s.seen = true; s.stale = false; s.port = null; s.pos = qi; s.wait = snap.queue[qi].wait; }
+    else if (s.stale) { me.session = null; save(); }                    // left over from an earlier visit
+    else if (s.seen) { s.done = true; save(); toast('Charging finished at ' + Math.round(s.soc) + '%.'); }
+  }
+  // The cards are rebuilt only when their layout changes; numbers are then updated in place,
+  // so a button is never replaced while a finger is on it.
+  let blSig = null, seSig = null;
+  function renderMe() {
+    const s = me.session, el = $('sess');
+    $('navdot').hidden = !active();
+    const mode = !s ? 'none' : s.done ? 'done' : s.port ? 'charge' + (s.booked ? 'B' : 'W') : 'wait';
+    if (mode !== seSig) {
+      seSig = mode;
+      el.innerHTML = mode === 'none' ? '<h2>No charge in progress</h2><p class="empty">Book a slot, or join the queue from the Station screen. Your charging status will appear here.</p>'
+        : mode === 'done' ? '<h2>Charge complete</h2><div class="kv"><span>Token</span><b id="x-tok"></b><span>Battery</span><b id="x-batt"></b><span>Energy</span><b id="x-kwh"></b><span>To pay</span><b id="x-cost"></b></div><button class="btn primary" id="s-done">Done</button>'
+        : mode === 'wait' ? '<span class="lab">Waiting for a charger</span><div class="token" id="x-tok"></div><div class="kv"><span>Your place in the queue</span><b id="x-pos"></b><span>Estimated wait</span><b id="x-wait"></b></div><p class="note">Stay near the station. Your port number appears here as soon as a charger is free.</p><button class="btn danger" id="s-stop">Leave the queue</button>'
+        : '<div class="card-h"><span class="lab" id="x-port"></span><span class="st" id="x-st"></span></div><div class="big"><b id="x-kw"></b><span>kW now</span></div>' +
+          '<div class="prog" id="x-prog" role="img"><i></i><em></em></div><div class="pct"><span id="x-now"></span><span id="x-tgt"></span></div>' +
+          '<div class="kv"><span>Token</span><b id="x-tok"></b><span>Time left</span><b id="x-left"></b><span>Energy so far</span><b id="x-kwh"></b><span>Cost so far</span><b id="x-cost"></b></div>' +
+          (mode === 'chargeW' ? `<p class="note">Walk-in fair use: while others are waiting, a session ends at ${snap.cfg.fairSoc}% or ${snap.cfg.fairKwh} kWh. Booked slots charge to the full target.</p>` : '') +
+          '<button class="btn danger" id="s-stop">Stop charging and unplug</button>';
+    }
+    const put = (id, v) => { const e = $(id); if (e && e.textContent !== v) e.textContent = v; };
+    if (s) {
+      put('x-tok', s.token); put('x-kwh', s.kwh.toFixed(2) + ' kWh'); put('x-cost', inr(s.kwh * PRICE));
+      put('x-batt', s.soc0 + '% to ' + Math.round(s.soc) + '%');
+      put('x-pos', String((s.pos || 0) + 1)); put('x-wait', s.wait == null || s.wait < 0 ? 'unknown' : '~' + dur(s.wait));
+      if (s.port && !s.done) {
+        put('x-port', 'Charging at port ' + s.port); put('x-st', SL[s.state] || ''); $('x-st').dataset.s = s.state;
+        put('x-kw', s.set.toFixed(2)); put('x-now', Math.round(s.soc) + '% now'); put('x-tgt', 'target ' + s.target + '%');
+        put('x-left', s.state === 'hold' ? 'waiting for power' : s.state === 'trip' ? 'station tripped' : '~' + dur(s.left));
+        const pr = $('x-prog'); pr.firstChild.style.width = clamp(s.soc, 0, 100).toFixed(1) + '%'; pr.lastChild.style.left = s.target + '%';
+        pr.setAttribute('aria-label', 'Battery ' + Math.round(s.soc) + ' percent, target ' + s.target + ' percent');
+      }
+    }
+
+    const t = now(), phase = b => { const d = b.abs - t; return d > 10 ? 'early' : d >= -45 ? 'open' : 'past'; };
+    const sig = me.bookings.map(b => b.code + phase(b)).join('|') + '|' + !!active();
+    if (sig !== blSig) {
+      blSig = sig;
+      $('blist').innerHTML = me.bookings.length ? me.bookings.map((b, i) => {
+        const tm = b.abs % 1440, ph = phase(b);
+        return `<li><div class="card-h"><span class="when">${hhmm(tm)} to ${hhmm(tm + 30)}</span><span class="code">${esc(b.code)}</span></div>` +
+          `<span>${SPEC[b.type]}, ${b.soc}% to ${b.target}%</span><span class="note" data-state></span>` +
+          `<div class="row2"><button class="btn primary" data-in="${i}" ${ph !== 'open' || active() ? 'disabled' : ''}>Check in</button><button class="btn" data-x="${i}">${ph === 'past' ? 'Remove' : 'Cancel'}</button></div></li>`;
+      }).join('') : '<li class="empty" style="border:0;padding:0;background:none">No bookings yet.</li>';
+    }
+    [...$('blist').querySelectorAll('[data-state]')].forEach((e, i) => {
+      const b = me.bookings[i]; if (!b) return;
+      const d = b.abs - t, ph = phase(b), txt = ph === 'early' ? 'Check-in opens at ' + hhmm(b.abs % 1440 - 10) + ', in ' + dur(d - 10) : ph === 'open' ? 'Check-in is open now' : 'This slot has passed';
+      if (e.textContent !== txt) e.textContent = txt;
+    });
+    put('d-note', linked() ? 'Linked to the station dashboard open in another tab. The dashboard controls the clock, and your check-in appears there as a vehicle.' : 'This is a demo: the station is simulated on your phone and its clock runs fast. Bookings are kept on this phone only.');
+    $('speed').style.opacity = linked() ? 0.5 : 1; $('jump').disabled = linked() || !me.bookings.length;
+  }
+
+  /* ---------- shell ---------- */
+  let view = 'station', toastT = 0;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4200); }
+  function go(name) {
+    if (!$('v-' + name)) return;
+    view = name;
+    ['station', 'book', 'me'].forEach(n => { $('v-' + n).hidden = n !== name; });
+    document.querySelectorAll('.nav button').forEach(b => { if (b.dataset.go === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    try { history.replaceState(null, '', '#' + name); } catch (e) { /* hash is a convenience only */ }
+    window.scrollTo(0, 0);
+  }
+  function render() {
+    if (!snap) return;
+    track();
+    $('clock').textContent = hhmm(snap.t);
+    $('src').textContent = linked() ? 'Live from the station dashboard' : 'Live, demo station';
+    if (view === 'station') renderStation(); else if (view === 'book') renderBook();
+    renderMe();
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.go) { go(b.dataset.go); render(); }
+    else if (b.dataset.abs) book(+b.dataset.abs);
+    else if (b.dataset.in) checkin(me.bookings[+b.dataset.in]);
+    else if (b.dataset.x) { me.bookings.splice(+b.dataset.x, 1); save(); blSig = null; slSig = null; render(); }
+    else if (b.id === 'join') checkin(null);
+    else if (b.id === 's-stop') send({ kind: 'leave', token: me.session.token }).then(() => { me.session = null; save(); render(); toast('You have left the station.'); });
+    else if (b.id === 's-done') { me.session = null; save(); render(); }
+    else if (b.id === 'jump') { const nb = me.bookings.find(x => x.abs - 8 > now()) || me.bookings[0]; let n = 0; while (st.day * 1440 + st.t < nb.abs - 8 && n++ < 3000) st.step(1); snap = Link.snapshot(st, 'local'); slSig = null; blSig = null; render(); }
+    else if (b.parentNode.id === 'speed') { speed = +b.dataset.v; [...$('speed').children].forEach(x => x.setAttribute('aria-pressed', x === b)); }
+  });
+
+  boot(); buildTypes();
+  snap = Link.snapshot(st, 'local');
+  if (location.hash.length > 1) go(location.hash.slice(1));
+  render();
+  setInterval(() => { if (!linked()) { advance(speed * 0.25); snap = Link.snapshot(st, 'local'); } render(); }, 250);
+})();
+</script>
+</body>
+</html>
